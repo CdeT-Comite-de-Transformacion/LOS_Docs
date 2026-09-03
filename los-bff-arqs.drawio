@@ -193,7 +193,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="ymUtmclzAbnPHHxZPDe8" name="C2">
-    <mxGraphModel dx="2188" dy="763" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="3184" dy="1343" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -723,7 +723,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="2Kvywzc8cu9yryJKB1pb" name="Documentación">
-    <mxGraphModel dx="1414" dy="806" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -743,7 +743,7 @@
           <mxGeometry height="200" width="510" x="120" y="680" as="geometry" />
         </mxCell>
         <mxCell id="3_APS2tieVD863JFF9kh-8" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;2. Contenido mínimo del README&lt;/font&gt;&lt;/h1&gt;&lt;li&gt;&lt;strong&gt;Qué es esto:&lt;/strong&gt; un párrafo en lenguaje sencillo explicando qué hace el LOS.&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Prerrequisitos:&lt;/strong&gt; versionamiento, gestor de paquetes y dependencias del sistema si las hay.&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Instalación:&lt;/strong&gt; pasos concretos.&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Estructura de carpetas:&lt;/strong&gt; qué contiene cada directorio principal.&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Procesos de despliegue:&lt;/strong&gt; cómo desplegar en local, dev y prod.&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Referencia de variables de entorno:&lt;/strong&gt; una tabla corta que explique qué hace cada variable y de dónde sacar su valor.&lt;/li&gt;&lt;li&gt;&lt;br&gt;&lt;/li&gt;&lt;li&gt;&lt;strong&gt;Stack tecnológico:&lt;/strong&gt; lista rápida de las tecnologías.&amp;nbsp;&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Testing:&lt;/strong&gt; cómo correr las pruebas.&lt;/li&gt;&lt;br&gt;&lt;li&gt;&lt;strong&gt;Troubleshooting:&lt;/strong&gt; los dos o tres tropezones típicos del primer montaje.&lt;/li&gt;" vertex="1">
-          <mxGeometry height="410" width="510" x="120" y="880" as="geometry" />
+          <mxGeometry height="320" width="510" x="120" y="880" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
