@@ -17,6 +17,7 @@ Para mantener la consistencia y legibilidad en todo el proyecto, todas las conve
 * **Bases de datos:** `app_db`, `metrics_prod`
 * **Tablas:** `users`, `user_profiles`, `order_items`
 * **Campos / Columnas:** `id`, `user_id`, `first_name`, `created_at`, `is_active`
+>#### [Guía nomenclaturas Go](https://www.alexedwards.net/blog/go-naming-conventions)
 ## Idioma
 Todo el proyecto (código fuente, comentarios, commits, documentación y nombres de variables) debe escribirse **exclusivamente en inglés**. 
 * **Comentarios y documentación:** `// Fetch user data from the database`
