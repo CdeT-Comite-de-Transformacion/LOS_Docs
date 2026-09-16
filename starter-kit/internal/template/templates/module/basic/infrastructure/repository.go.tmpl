@@ -1,0 +1,22 @@
+package infrastructure
+
+import (
+	"context"
+	"fmt"
+
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+)
+
+type Repository struct{}
+
+func NewRepository() *Repository {
+	return &Repository{}
+}
+
+func (r *Repository) Save(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+	return nil
+}
+
+func (r *Repository) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
+	return nil, fmt.Errorf("%w: %s", domain.ErrNotFound, id)
+}

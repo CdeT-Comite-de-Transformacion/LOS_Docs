@@ -1,0 +1,29 @@
+package application
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+)
+
+type Service struct {
+	repository domain.Repository
+	publisher  EventPublisher
+}
+
+func NewService(repository domain.Repository) *Service {
+	return NewServiceWithPublisher(repository, NoopPublisher{})
+	}
+
+func NewServiceWithPublisher(repository domain.Repository, publisher EventPublisher) *Service {
+	return &Service{repository: repository, publisher: publisher}
+}
+
+func (s *Service) Create(ctx context.Context, id string) error {
+	entity := domain.New{{ .EntityName }}(id)
+	entity.Record(domain.New{{ .EntityName }}Created(id))
+	if err := s.repository.Save(ctx, entity); err != nil {
+		return err
+	}
+	return s.publisher.Publish(ctx, entity.PullEvents()...)
+}

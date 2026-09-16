@@ -1,0 +1,104 @@
+name: Starter kit build and release
+
+on:
+  pull_request:
+    paths: ['starter-kit/**', '.github/workflows/starter-kit.yml']
+  push:
+    branches: ['**']
+    tags: ['v*']
+    paths: ['starter-kit/**', '.github/workflows/starter-kit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: starter-kit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os: linux
+          - runner: windows-latest
+            os: windows
+          - runner: macos-latest
+            os: darwin
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: starter-kit
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: starter-kit/go.mod
+          cache-dependency-path: starter-kit/go.sum
+      - name: Test and vet
+        run: |
+          go test ./...
+          go vet ./...
+      - name: Build and package both architectures
+        env:
+          TARGET_OS: ${{ matrix.os }}
+        run: |
+          set -euo pipefail
+          version="dev-${GITHUB_SHA:0:12}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Expected a stable version tag: vX.Y.Z'; exit 1; }
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            package="modkit_${version}_${TARGET_OS}_${arch}"
+            mkdir -p "dist/$package"
+            binary=modkit
+            if [[ "$TARGET_OS" == windows ]]; then binary=modkit.exe; fi
+            CGO_ENABLED=0 GOOS="$TARGET_OS" GOARCH="$arch" go build -trimpath \
+              -ldflags "-s -w -X github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/cmd.version=$version" \
+              -o "dist/$package/$binary" .
+            cp README.md RELEASES.md modkit.example.yaml "dist/$package/"
+            if [[ "$TARGET_OS" == windows ]]; then
+              powershell.exe -NoProfile -Command "Compress-Archive -Path 'dist/$package/*' -DestinationPath 'dist/$package.zip'"
+            else
+              tar -czf "dist/$package.tar.gz" -C "dist/$package" .
+            fi
+          done
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: modkit-${{ matrix.os }}
+          path: |
+            starter-kit/dist/*.zip
+            starter-kit/dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: modkit-*
+          merge-multiple: true
+          path: dist
+      - name: Generate SHA256 checksums
+        working-directory: dist
+        run: sha256sum *.zip *.tar.gz > checksums.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes --title "modkit $RELEASE_TAG"

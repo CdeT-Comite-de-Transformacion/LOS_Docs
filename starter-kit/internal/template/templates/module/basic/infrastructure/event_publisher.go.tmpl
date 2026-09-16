@@ -1,0 +1,17 @@
+package infrastructure
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+)
+
+type EventPublisher struct{}
+
+func NewEventPublisher() *EventPublisher {
+	return &EventPublisher{}
+}
+
+func (*EventPublisher) Publish(context.Context, ...domain.Event) error {
+	return nil
+}

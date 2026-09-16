@@ -58,3 +58,8 @@ func GetUserByID(id string) (*User, error) {
 }
 ```
 [Documentación Go](https://go.dev/src/go/doc/example.go)
+
+
+## DDD starter kit
+
+The [modkit starter kit](starter-kit/README.md) generates Go projects and modular DDD packages from embedded templates. See the [build and release guide](starter-kit/RELEASES.md) for Windows, Linux, and macOS binaries, Semantic Versioning tags, and automated GitHub Releases.

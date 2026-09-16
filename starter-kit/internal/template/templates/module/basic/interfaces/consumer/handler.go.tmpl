@@ -1,0 +1,11 @@
+package consumer
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+)
+
+type Handler interface {
+	Handle(ctx context.Context, event domain.Event) error
+}
