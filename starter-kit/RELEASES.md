@@ -6,31 +6,36 @@ Go is required to compile and run the projects it generates.
 
 ## Continuous integration
 
-Pull requests and branch pushes affecting the starter kit run tests and vet on
-Windows, Linux, and macOS, then build amd64 and arm64 binaries with CGO disabled.
-Download the six compressed packages from the workflow's artifacts. Manual
-workflow runs also produce development packages without publishing a release.
+Publishing a new GitHub Release triggers tests and vet on Windows, Linux, and
+macOS, then builds amd64 and arm64 binaries with CGO disabled. The only workflow
+trigger is `release: published`; branch pushes, tag pushes, pull requests,
+draft releases, release edits, and manual dispatch do not start a build.
 
 ## Versioning and publication
 
 Stable releases use Semantic Versioning tags (`vMAJOR.MINOR.PATCH`). The tag is
 the version source and is injected into `modkit version`. Local builds report
-`dev`; CI branch builds report `dev-<commit>`. Prerelease tags are not supported.
+`dev`. Prerelease tags are not supported.
 
-After committing and pushing the integration, publish the first version from
-the repository root:
+After committing and pushing the integration, create and push a version tag
+from the repository root:
 
 ```bash
 git tag -a v0.1.0 -m "Release modkit v0.1.0"
 git push origin v0.1.0
 ```
 
-Tag pushes automatically test, build, package, and publish a GitHub Release with
-generated release notes and `checksums.txt`. Publication requires all three
-platform jobs to succeed. The workflow uses the built-in `GITHUB_TOKEN` with
+Then open GitHub **Releases > Draft a new release**, select `v0.1.0`, add the
+release title and notes, and click **Publish release**. The selected tag must
+contain this workflow and the starter kit. Publishing starts the workflow,
+which checks out that tag and attaches the six packages and `checksums.txt`
+to the existing release after all three platform jobs succeed. Assets become
+available after the build completes; the release itself is already published.
+The workflow uses the built-in `GITHUB_TOKEN` with
 `contents: write` only in the release job; no custom token is required. Repository
 or organization policies must allow this permission. Use a new tag for each
-release; publishing an existing release fails rather than overwriting assets.
+release. Rerunning a workflow replaces assets with matching names using
+`gh release upload --clobber`.
 
 | Platform | Architectures | Package |
 | --- | --- | --- |

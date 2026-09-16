@@ -1,20 +1,15 @@
 name: Starter kit build and release
 
 on:
-  pull_request:
-    paths: ['starter-kit/**', '.github/workflows/starter-kit.yml']
-  push:
-    branches: ['**']
-    tags: ['v*']
-    paths: ['starter-kit/**', '.github/workflows/starter-kit.yml']
-  workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
 
 concurrency:
-  group: starter-kit-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: starter-kit-${{ github.workflow }}-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -37,6 +32,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          ref: ${{ github.event.release.tag_name }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: starter-kit/go.mod
@@ -48,13 +44,11 @@ jobs:
       - name: Build and package both architectures
         env:
           TARGET_OS: ${{ matrix.os }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          version="dev-${GITHUB_SHA:0:12}"
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Expected a stable version tag: vX.Y.Z'; exit 1; }
-            version="${GITHUB_REF_NAME#v}"
-          fi
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Expected a stable version tag: vX.Y.Z'; exit 1; }
+          version="${RELEASE_TAG#v}"
           mkdir -p dist
           for arch in amd64 arm64; do
             package="modkit_${version}_${TARGET_OS}_${arch}"
@@ -82,7 +76,6 @@ jobs:
           retention-days: 14
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -96,9 +89,9 @@ jobs:
       - name: Generate SHA256 checksums
         working-directory: dist
         run: sha256sum *.zip *.tar.gz > checksums.txt
-      - name: Publish release
+      - name: Upload assets to the published release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes --title "modkit $RELEASE_TAG"
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/* --clobber
