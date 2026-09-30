@@ -58,8 +58,61 @@ func GetUserByID(id string) (*User, error) {
 }
 ```
 [Documentación Go](https://go.dev/src/go/doc/example.go)
+#### Java (Javadoc)
+En Java, la documentación del código se realiza mediante Javadoc utilizando bloques `/** ... */`.
+```
+/**
+ * Interface to define the behavior of a payment processor.
+ */
+public interface PaymentProcessor {
 
+    /**
+     * Processes a payment transaction for a customer.
+     *
+     * @param customerId The unique identifier of the customer making the purchase.
+     * @param amount The total amount of money to process.
+     * @return {@code true} if the transaction was successful; {@code false} otherwise.
+     * @throws IllegalArgumentException If the amount is less than or equal to zero.
+     */
+    boolean process(String customerId, double amount);
+}
+
+/**
+ * Service responsible for managing card payment logic.
+ */
+public class CardPaymentService implements PaymentProcessor {
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean process(String customerId, double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero.");
+        }
+        // Processing logic
+        return true;
+    }
+
+    /**
+     * Retrieves the current status of a previous transaction.
+     *
+     * @param transactionId The unique code of the transaction to check.
+     * @return A string representing the status of the transaction.
+     */
+    public String getStatus(String transactionId) {
+        return "APPROVED";
+    }
+}
+```
+[Documentación Java](https://www.oracle.com/technical-resources/articles/java/javadoc-tool.html)
 
 ## DDD starter kit
+
+# 🗺️ Mapa de Arquitectura
+
+Para explorar el diagrama de forma interactiva (hacer zoom, expandir componentes y navegar por los niveles C4), haz clic en el siguiente enlace:
+
+[![Explorar Diagrama Interactivo](https://shields.io)](https://structurizr.com)
 
 The [modkit starter kit](starter-kit/README.md) generates Go projects and modular DDD packages from embedded templates. See the [build and release guide](starter-kit/RELEASES.md) for Windows, Linux, and macOS binaries, Semantic Versioning tags, and automated GitHub Releases.
