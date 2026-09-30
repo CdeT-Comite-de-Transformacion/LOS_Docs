@@ -109,4 +109,10 @@ public class CardPaymentService implements PaymentProcessor {
 
 ## DDD starter kit
 
+# 🗺️ Mapa de Arquitectura
+
+Para explorar el diagrama de forma interactiva (hacer zoom, expandir componentes y navegar por los niveles C4), haz clic en el siguiente enlace:
+
+[![Explorar Diagrama Interactivo](https://shields.io)](https://structurizr.com)
+
 The [modkit starter kit](starter-kit/README.md) generates Go projects and modular DDD packages from embedded templates. See the [build and release guide](starter-kit/RELEASES.md) for Windows, Linux, and macOS binaries, Semantic Versioning tags, and automated GitHub Releases.
