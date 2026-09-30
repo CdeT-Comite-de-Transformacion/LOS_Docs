@@ -1,0 +1,52 @@
+package application
+
+import (
+	"context"
+ "strings"
+
+	"{{ .ImportPath }}/domain"
+)
+
+type Service struct {
+	repository domain.Repository
+	publisher  EventPublisher
+}
+
+func NewService(repository domain.Repository) *Service {
+	return NewServiceWithPublisher(repository, NoopPublisher{})
+	}
+
+func NewServiceWithPublisher(repository domain.Repository, publisher EventPublisher) *Service {
+	return &Service{repository: repository, publisher: publisher}
+}
+
+func (s *Service) Create(ctx context.Context, id string) error {
+	return s.CreateEntity(ctx, domain.New{{ .EntityName }}(id))
+}
+
+func (s *Service) CreateEntity(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+ if entity == nil || strings.TrimSpace(entity.ID) == "" { return domain.ErrInvalidID }
+	entity.Record(domain.New{{ .EntityName }}Created(entity.ID))
+	if err := s.repository.Save(ctx, entity); err != nil {
+		return err
+	}
+	return s.publisher.Publish(ctx, entity.PullEvents()...)
+}
+
+
+func (s *Service) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
+ if strings.TrimSpace(id) == "" { return nil, domain.ErrInvalidID }
+ return s.repository.FindByID(ctx, id)
+}
+func (s *Service) List(ctx context.Context, pagination domain.Pagination) (domain.Page, error) {
+ if err := pagination.Validate(); err != nil { return domain.Page{}, err }
+ return s.repository.List(ctx, pagination)
+}
+func (s *Service) Update(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+ if entity == nil || strings.TrimSpace(entity.ID) == "" { return domain.ErrInvalidID }
+ return s.repository.Update(ctx, entity)
+}
+func (s *Service) Delete(ctx context.Context, id string) error {
+ if strings.TrimSpace(id) == "" { return domain.ErrInvalidID }
+ return s.repository.Delete(ctx, id)
+}

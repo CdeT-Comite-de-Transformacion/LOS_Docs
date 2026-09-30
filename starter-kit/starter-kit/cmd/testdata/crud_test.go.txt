@@ -1,0 +1,107 @@
+package cmd
+
+import (
+ "fmt"
+ "encoding/json"
+ "net/http/httptest"
+ "strings"
+ "testing"
+ "time"
+)
+
+func TestGeneratedCRUD(t *testing.T) {
+ db, err := OpenDatabase()
+ if err != nil { t.Fatal(err) }
+ sqlDB, err := db.DB()
+ if err != nil { t.Fatal(err) }
+ defer sqlDB.Close()
+ tx := db.Begin()
+ if tx.Error != nil { t.Fatal(tx.Error) }
+ defer tx.Rollback()
+ schema := fmt.Sprintf("modkit_test_%d", time.Now().UnixNano())
+ if err := tx.Exec("CREATE SCHEMA " + schema).Error; err != nil { t.Fatal(err) }
+ if err := tx.Exec("SET LOCAL search_path TO " + schema).Error; err != nil { t.Fatal(err) }
+ router := NewRouter()
+ for _, initialize := range moduleInitializers {
+  if err := initialize(tx, router); err != nil { t.Fatal(err) }
+ }
+ checks := []struct{ method, path, body string; status int; contains string }{
+  {"GET", "/healthz", "", 200, "ok"},
+  {"GET", "/sales/customer", "", 200, "[]"},
+  {"POST", "/sales/customer", "{", 400, ""},
+  {"POST", "/sales/customer", "{}", 400, ""},
+  {"POST", "/sales/customer", `{"id":"c1","name":"Alice","active":true,"balance":12}`, 201, "Alice"},
+  {"POST", "/sales/customer", `{"id":"c1"}`, 409, ""},
+  {"GET", "/sales/customer/c1", "", 200, "Alice"},
+  {"GET", "/sales/customer", "", 200, "Alice"},
+  {"PUT", "/sales/customer/c1", `{"id":"wrong"}`, 400, ""},
+  {"PUT", "/sales/customer/c1", `{"name":"","active":false,"balance":0}`, 200, `"balance":0`},
+  {"GET", "/sales/customer/c1", "", 200, `"active":false`},
+  {"PUT", "/sales/customer/missing", "{}", 404, ""},
+  {"GET", "/sales/customer/missing", "", 404, ""},
+  {"POST", "/sales", `{"id":"s1"}`, 201, "s1"},
+  {"GET", "/sales/s1", "", 200, "s1"},
+  {"DELETE", "/sales/customer/c1", "", 204, ""},
+  {"GET", "/sales/customer/c1", "", 404, ""},
+  {"DELETE", "/sales/customer/c1", "", 404, ""},
+ }
+ for _, check := range checks {
+  request := httptest.NewRequest(check.method, check.path, strings.NewReader(check.body))
+  request.Header.Set("Content-Type", "application/json")
+  response := httptest.NewRecorder()
+  if err := tx.SavePoint("request").Error; err != nil { t.Fatal(err) }
+  router.ServeHTTP(response, request)
+  if response.Code >= 400 { if err := tx.RollbackTo("request").Error; err != nil { t.Fatal(err) } }
+  if response.Code != check.status || !strings.Contains(response.Body.String(), check.contains) {
+   t.Fatalf("%s %s: got %d %s; want %d containing %q", check.method, check.path, response.Code, response.Body.String(), check.status, check.contains)
+  }
+ }
+
+ // Exercise both the module's primary entity and an additional entity.
+ for _, path := range []string{"/sales", "/sales/customer"} {
+  for _, id := range []string{"p3", "p1", "p2"} {
+   request := httptest.NewRequest("POST", path, strings.NewReader(fmt.Sprintf(`{"id":%q}`, id)))
+   request.Header.Set("Content-Type", "application/json")
+   response := httptest.NewRecorder()
+   router.ServeHTTP(response, request)
+   if response.Code != 201 { t.Fatalf("seed: %d %s", response.Code, response.Body.String()) }
+  }
+  total := int64(3)
+  if path == "/sales" { total = 4 } // Existing s1 from CRUD checks.
+  for _, test := range []struct {
+   query string
+   offset, size int
+   ids []string
+  }{
+   {"?offset=0&limit=2",0,2,[]string{"p1","p2"}},
+   {"?offset=2&limit=2",2,2,func() []string { if total == 4 { return []string{"p3","s1"} }; return []string{"p3"} }()},
+   {"?offset=1&limit=2",1,2,[]string{"p2","p3"}},
+   {"?offset=99&limit=2",99,2,[]string{}},
+   {"",0,20,func() []string { if total == 4 { return []string{"p1","p2","p3","s1"} }; return []string{"p1","p2","p3"} }()},
+   {"?limit=100",0,100,func() []string { if total == 4 { return []string{"p1","p2","p3","s1"} }; return []string{"p1","p2","p3"} }()},
+  } {
+   response := httptest.NewRecorder()
+   router.ServeHTTP(response, httptest.NewRequest("GET", path+test.query,nil))
+   var result struct {
+    Items []struct { ID string }
+    Offset int
+    Limit int `json:"limit"`
+    Total int64
+   }
+   if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil { t.Fatal(err) }
+   if response.Code != 200 || result.Offset != test.offset || result.Limit != test.size || result.Total != total || result.Items == nil || len(result.Items) != len(test.ids) {
+    t.Fatalf("%s%s: unexpected pagination: %s",path,test.query,response.Body.String())
+   }
+   for i,id := range test.ids { if result.Items[i].ID != id { t.Fatalf("unexpected order: %s",response.Body.String()) } }
+  }
+  for _, query := range []string{
+   "?offset=-1", "?offset=abc", "?offset=", "?limit=",
+   "?limit=0", "?limit=-1", "?limit=101", "?limit=abc",
+   "?offset=9999999999999999999999999", "?limit=9999999999999999999999999",
+  } {
+   response := httptest.NewRecorder()
+   router.ServeHTTP(response,httptest.NewRequest("GET",path+query,nil))
+   if response.Code != 400 { t.Fatalf("%s%s: expected 400, got %d",path,query,response.Code) }
+  }
+ }
+}

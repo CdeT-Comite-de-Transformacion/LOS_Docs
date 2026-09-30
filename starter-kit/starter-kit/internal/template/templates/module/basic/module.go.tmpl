@@ -1,0 +1,15 @@
+package {{ .Package }}
+
+import (
+ "gorm.io/gorm"
+ "{{ .ImportPath }}/application"
+ "{{ .ImportPath }}/domain"
+ "{{ .ImportPath }}/infrastructure"
+)
+
+type Module struct { Service *application.Service }
+
+func New(db *gorm.DB) (*Module, error) {
+ if err := db.AutoMigrate(&domain.{{ .EntityName }}{}); err != nil { return nil, err }
+ return &Module{Service: application.NewService(infrastructure.NewRepository(db))}, nil
+}

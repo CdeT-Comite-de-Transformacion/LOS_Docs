@@ -1,0 +1,8 @@
+project:
+  name: los
+  module: github.com/your-org/los
+  architecture: modular-ddd
+modules:
+  root: internal
+defaults:
+  template: console
