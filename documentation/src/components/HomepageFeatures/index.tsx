@@ -1,8 +1,8 @@
-import type {ReactNode} from 'react';
-import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import Heading from '@theme/Heading';
-import styles from './styles.module.css';
+import type { ReactNode } from "react";
+import clsx from "clsx";
+import Link from "@docusaurus/Link";
+import Heading from "@theme/Heading";
+import styles from "./styles.module.css";
 
 type SectionItem = {
   title: string;
@@ -12,43 +12,41 @@ type SectionItem = {
 
 const SectionList: SectionItem[] = [
   {
-    title: 'Development Rules',
-    to: '/docs/category/development-rules',
+    title: "Documentation",
+    to: "/docs/category/development-rules",
     description: (
       <>
-        Naming conventions, project language, code documentation (JSDoc,
-        GoDoc, Javadoc) and the Git-flow workflow with its branch and Pull
-        Request rules.
+        The project standards: naming conventions, project language, code
+        documentation and the Git-flow workflow, plus the architecture map and
+        the <code>modkit</code> generator.
       </>
     ),
   },
   {
-    title: 'DDD Starter Kit',
-    to: '/docs/category/standardization',
+    title: "Projects",
+    to: "/projects",
     description: (
       <>
-        Architecture map and <code>modkit</code>, the Go project and DDD module
-        generator based on templates, with binaries for Windows, Linux and
-        macOS.
+        The projects currently in the area, starting with LOS (Lean Origination
+        System), with their frontend and backend documentation.
       </>
     ),
   },
   {
-    title: 'News',
-    to: '/news',
+    title: "News",
+    to: "/news",
     description: (
       <>
-        Team and project updates: welcomes, onboarding and important
-        announcements.
+        Team and project news: welcomes, onboarding and important announcements.
       </>
     ),
   },
 ];
 
-function Section({title, to, description}: SectionItem) {
+function Section({ title, to, description }: SectionItem) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className={clsx('card', styles.sectionCard)}>
+    <div className={clsx("col col--4")}>
+      <div className={clsx("card", styles.sectionCard)}>
         <div className="card__header">
           <Heading as="h3">{title}</Heading>
         </div>
@@ -70,17 +68,12 @@ export default function HomepageFeatures(): ReactNode {
     <section className={styles.features}>
       <div className="container">
         <div className={styles.about}>
-          <Heading as="h2">What is LOS?</Heading>
+          <Heading as="h2">Official documentation space</Heading>
           <p>
-            <strong>LOS (Lean Origination System)</strong> is the origination
-            system of the Transformation Committee. It manages the origination
-            process end to end through backend services (BFF), process flows
-            (BPM), document processing with OCR, centralized authentication and
-            event messaging, deployed on AWS.
-          </p>
-          <p>
-            This documentation gathers the rules, architecture and tools the
-            team uses to build it.
+            This is the official documentation space of the Transformation
+            Committee. Here you will find the standards that define how we build
+            software, the projects currently under development in the area, and
+            the latest news from the team and its projects.
           </p>
         </div>
         <Heading as="h2" className={styles.sectionsTitle}>

@@ -91,7 +91,7 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: "LOS",
+      title: "Transformation Committee",
       logo: {
         alt: "LOS Logo",
         src: "img/logo.svg",
