@@ -1,35 +1,17 @@
+---
+sidebar_position: 3
+title: Documentación de código
+---
 
-# Reglas de desarrollo
-## Nomenclaturas
-Para mantener la consistencia y legibilidad en todo el proyecto, todas las convenciones de nombres siguen las siguientes estructuras:
-#### kebab-case
-* **Archivos y carpetas:** `component`,`user-component.js`, `main-styles.css`, `main.go`
-* **Rutas / URLs:** `/user-profile`, `/api/v1/user-profile`
-* **Clases y selectores CSS:** `.main-button`, `.card-container`
-* **Ramas de Git:** `feature/new-window`, `bugfix/error-login`
-#### PascalCase
-* **Clases:** `NewClass()`
-* **Interfases:** `NewInterface()`
-#### camelCase
-* **Métodos y funciones:** `getUserById()`, `calculateTotal()`
-* **Variables y parámetros:** `let userList = []`, `var totalAmount = 10`
-* **Propiedades de objetos / JSON:** `{ "firstName": "John", "isActive": true }`
-#### snake_case
-* **Bases de datos:** `app_db`, `metrics_prod`
-* **Tablas:** `users`, `user_profiles`, `order_items`
-* **Campos / Columnas:** `id`, `user_id`, `first_name`, `created_at`, `is_active`
->[Guía nomenclaturas Go](https://www.alexedwards.net/blog/go-naming-conventions)
-## Idioma
-Todo el proyecto (código fuente, comentarios, commits, documentación y nombres de variables) debe escribirse **exclusivamente en inglés**. 
-* **Comentarios y documentación:** `// Fetch user data from the database`
-* **Mensajes de commit:** `git commit -m "feat: add user authentication"`
-* **Nombres de variables y funciones:** `const userList = []`, `func getUserById()`
->**Nota:** Se debe evitar el uso de español o spanglish en cualquier parte del código del proyecto.
-## Documentación de código
+# Documentación de código
+
 Todo el código debe documentarse siguiendo las convenciones de cada lenguaje antes de ser integrado:
+
 #### TypeScript / JavaScript (JSDoc)
+
 Usa bloques `/** ... */` sobre funciones, clases e interfaces especificando parámetros (`@param`), valores de retorno (`@returns`) y tipos.
-```
+
+```ts
 /**
  * Calculates the total price including tax.
  *
@@ -41,10 +23,14 @@ function calculateTotal(amount: number, taxRate: number): number {
   return amount + (amount * taxRate);
 }
 ```
+
 [Documentación TypeScript](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
+
 #### Go (GoDoc)
+
 Escribe comentarios simples de línea `//` directamente sobre declaraciones exportadas (tipos, funciones, constantes o paquetes). Todo comentario debe comenzar con el mismo nombre de la entidad que documenta.
-```
+
+```go
 // User represents an authenticated account in the system.
 type User struct {
     ID   string
@@ -57,10 +43,14 @@ func GetUserByID(id string) (*User, error) {
     // ...
 }
 ```
+
 [Documentación Go](https://go.dev/src/go/doc/example.go)
+
 #### Java (Javadoc)
+
 En Java, la documentación del código se realiza mediante Javadoc utilizando bloques `/** ... */`.
-```
+
+```java
 /**
  * Interface to define the behavior of a payment processor.
  */
@@ -105,14 +95,5 @@ public class CardPaymentService implements PaymentProcessor {
     }
 }
 ```
+
 [Documentación Java](https://www.oracle.com/technical-resources/articles/java/javadoc-tool.html)
-
-## DDD starter kit
-
-# 🗺️ Mapa de Arquitectura
-
-Para explorar el diagrama de forma interactiva (hacer zoom, expandir componentes y navegar por los niveles C4), haz clic en el siguiente enlace:
-
-[![Explorar Diagrama Interactivo](https://shields.io)](https://structurizr.com)
-
-The [modkit starter kit](starter-kit/README.md) generates Go projects and modular DDD packages from embedded templates. See the [build and release guide](starter-kit/RELEASES.md) for Windows, Linux, and macOS binaries, Semantic Versioning tags, and automated GitHub Releases.
