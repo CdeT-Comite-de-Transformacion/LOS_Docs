@@ -1,15 +1,15 @@
 ---
 sidebar_position: 3
-title: Documentación de código
+title: Code Documentation
 ---
 
-# Documentación de código
+# Code Documentation
 
-Todo el código debe documentarse siguiendo las convenciones de cada lenguaje antes de ser integrado:
+All code must be documented following each language's conventions before being merged:
 
 #### TypeScript / JavaScript (JSDoc)
 
-Usa bloques `/** ... */` sobre funciones, clases e interfaces especificando parámetros (`@param`), valores de retorno (`@returns`) y tipos.
+Use `/** ... */` blocks above functions, classes and interfaces, specifying parameters (`@param`), return values (`@returns`) and types.
 
 ```ts
 /**
@@ -24,11 +24,11 @@ function calculateTotal(amount: number, taxRate: number): number {
 }
 ```
 
-[Documentación TypeScript](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
+[TypeScript documentation](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
 
 #### Go (GoDoc)
 
-Escribe comentarios simples de línea `//` directamente sobre declaraciones exportadas (tipos, funciones, constantes o paquetes). Todo comentario debe comenzar con el mismo nombre de la entidad que documenta.
+Write simple `//` line comments directly above exported declarations (types, functions, constants or packages). Every comment must start with the name of the entity it documents.
 
 ```go
 // User represents an authenticated account in the system.
@@ -44,11 +44,11 @@ func GetUserByID(id string) (*User, error) {
 }
 ```
 
-[Documentación Go](https://go.dev/src/go/doc/example.go)
+[Go documentation](https://go.dev/src/go/doc/example.go)
 
 #### Java (Javadoc)
 
-En Java, la documentación del código se realiza mediante Javadoc utilizando bloques `/** ... */`.
+In Java, code is documented with Javadoc using `/** ... */` blocks.
 
 ```java
 /**
@@ -96,4 +96,4 @@ public class CardPaymentService implements PaymentProcessor {
 }
 ```
 
-[Documentación Java](https://www.oracle.com/technical-resources/articles/java/javadoc-tool.html)
+[Java documentation](https://www.oracle.com/technical-resources/articles/java/javadoc-tool.html)

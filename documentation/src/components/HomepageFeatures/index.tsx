@@ -1,8 +1,8 @@
-import type {ReactNode} from 'react';
-import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import Heading from '@theme/Heading';
-import styles from './styles.module.css';
+import type { ReactNode } from "react";
+import clsx from "clsx";
+import Link from "@docusaurus/Link";
+import Heading from "@theme/Heading";
+import styles from "./styles.module.css";
 
 type SectionItem = {
   title: string;
@@ -12,43 +12,41 @@ type SectionItem = {
 
 const SectionList: SectionItem[] = [
   {
-    title: 'Reglas de Desarrollo',
-    to: '/docs/category/reglas-de-desarrollo',
+    title: "Documentation",
+    to: "/docs/category/development-rules",
     description: (
       <>
-        Convenciones de nomenclatura, idioma del proyecto, documentación de
-        código (JSDoc, GoDoc, Javadoc) y el flujo de trabajo Git-flow con sus
-        reglas de ramas y Pull Requests.
+        The project standards: naming conventions, project language, code
+        documentation and the Git-flow workflow, plus the architecture map and
+        the <code>modkit</code> generator.
       </>
     ),
   },
   {
-    title: 'DDD Starter Kit',
-    to: '/docs/category/ddd-starter-kit',
+    title: "Projects",
+    to: "/projects",
     description: (
       <>
-        Mapa de arquitectura y <code>modkit</code>, el generador de proyectos Go
-        y módulos DDD a partir de plantillas, con binarios para Windows, Linux
-        y macOS.
+        The projects currently in the area, starting with LOS (Lean Origination
+        System), with their frontend and backend documentation.
       </>
     ),
   },
   {
-    title: 'News',
-    to: '/news',
+    title: "News",
+    to: "/news",
     description: (
       <>
-        Novedades del equipo y del proyecto: bienvenidas, onboarding y avisos
-        importantes.
+        Team and project news: welcomes, onboarding and important announcements.
       </>
     ),
   },
 ];
 
-function Section({title, to, description}: SectionItem) {
+function Section({ title, to, description }: SectionItem) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className={clsx('card', styles.sectionCard)}>
+    <div className={clsx("col col--4")}>
+      <div className={clsx("card", styles.sectionCard)}>
         <div className="card__header">
           <Heading as="h3">{title}</Heading>
         </div>
@@ -57,7 +55,7 @@ function Section({title, to, description}: SectionItem) {
         </div>
         <div className="card__footer">
           <Link className="button button--primary button--block" to={to}>
-            Ver sección
+            View section
           </Link>
         </div>
       </div>
@@ -70,22 +68,16 @@ export default function HomepageFeatures(): ReactNode {
     <section className={styles.features}>
       <div className="container">
         <div className={styles.about}>
-          <Heading as="h2">¿Qué es LOS?</Heading>
+          <Heading as="h2">Official documentation space</Heading>
           <p>
-            <strong>LOS (Lean Origination System)</strong> es el sistema de
-            originación del Comité de Transformación. Gestiona el proceso de
-            originación de punta a punta mediante servicios backend (BFF),
-            flujos de proceso (BPM), procesamiento de documentos con OCR,
-            autenticación centralizada y mensajería de eventos, desplegado sobre
-            AWS.
-          </p>
-          <p>
-            Esta documentación reúne las reglas, la arquitectura y las
-            herramientas que el equipo utiliza para construirlo.
+            This is the official documentation space of the Transformation
+            Committee. Here you will find the standards that define how we build
+            software, the projects currently under development in the area, and
+            the latest news from the team and its projects.
           </p>
         </div>
         <Heading as="h2" className={styles.sectionsTitle}>
-          Resumen de la documentación
+          Documentation overview
         </Heading>
         <div className="row">
           {SectionList.map((props, idx) => (
