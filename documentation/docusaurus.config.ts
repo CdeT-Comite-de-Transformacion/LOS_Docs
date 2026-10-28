@@ -5,8 +5,8 @@ import type * as Preset from "@docusaurus/preset-classic";
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: "LOS Documentation",
-  tagline: "Lean Origination System Documentation",
+  title: "TC Documentation",
+  tagline: "Transformation Committee Documentation",
   favicon: "img/favicon.ico",
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -72,6 +72,18 @@ const config: Config = {
     ],
   ],
 
+  plugins: [
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "projects",
+        path: "./projects",
+        routeBasePath: "projects",
+        sidebarPath: "./sidebarsProjects.ts",
+      },
+    ],
+  ],
+
   themeConfig: {
     // Replace with your project's social card
     image: "img/docusaurus-social-card.jpg",
@@ -91,6 +103,13 @@ const config: Config = {
           position: "left",
           label: "Documentation",
         },
+        {
+          type: "docSidebar",
+          sidebarId: "projectsSidebar",
+          docsPluginId: "projects",
+          position: "left",
+          label: "Projects",
+        },
         { to: "/news", label: "News", position: "left" },
         {
           href: "https://github.com/CdeT-Comite-de-Transformacion/LOS_Docs",
@@ -107,7 +126,7 @@ const config: Config = {
           items: [
             {
               label: "Documentation",
-              to: "/docs/category/reglas-de-desarrollo",
+              to: "/docs/category/development-rules",
             },
           ],
         },
@@ -130,7 +149,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} LOS Project, Finanzauto.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Transformation Committee, Finanzauto.`,
     },
     prism: {
       theme: prismThemes.github,

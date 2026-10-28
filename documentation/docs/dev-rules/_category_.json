@@ -1,8 +1,8 @@
 {
-  "label": "Reglas de Desarrollo",
+  "label": "Development Rules",
   "position": 1,
   "link": {
     "type": "generated-index",
-    "description": "Convenciones de nomenclatura, idioma y documentación de código."
+    "description": "Naming, language and code documentation conventions."
   }
 }

@@ -20,8 +20,8 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/category/reglas-de-desarrollo">
-            Reglas de Desarrollo
+            to="/docs/category/development-rules">
+            Development Rules
           </Link>
         </div>
       </div>
@@ -34,7 +34,7 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title={siteConfig.title}
-      description="Documentación del Lean Origination System (LOS): reglas de desarrollo, arquitectura y herramientas.">
+      description="Lean Origination System (LOS) documentation: development rules, architecture and tooling.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

@@ -12,24 +12,24 @@ type SectionItem = {
 
 const SectionList: SectionItem[] = [
   {
-    title: 'Reglas de Desarrollo',
-    to: '/docs/category/reglas-de-desarrollo',
+    title: 'Development Rules',
+    to: '/docs/category/development-rules',
     description: (
       <>
-        Convenciones de nomenclatura, idioma del proyecto, documentación de
-        código (JSDoc, GoDoc, Javadoc) y el flujo de trabajo Git-flow con sus
-        reglas de ramas y Pull Requests.
+        Naming conventions, project language, code documentation (JSDoc,
+        GoDoc, Javadoc) and the Git-flow workflow with its branch and Pull
+        Request rules.
       </>
     ),
   },
   {
     title: 'DDD Starter Kit',
-    to: '/docs/category/ddd-starter-kit',
+    to: '/docs/category/standardization',
     description: (
       <>
-        Mapa de arquitectura y <code>modkit</code>, el generador de proyectos Go
-        y módulos DDD a partir de plantillas, con binarios para Windows, Linux
-        y macOS.
+        Architecture map and <code>modkit</code>, the Go project and DDD module
+        generator based on templates, with binaries for Windows, Linux and
+        macOS.
       </>
     ),
   },
@@ -38,8 +38,8 @@ const SectionList: SectionItem[] = [
     to: '/news',
     description: (
       <>
-        Novedades del equipo y del proyecto: bienvenidas, onboarding y avisos
-        importantes.
+        Team and project updates: welcomes, onboarding and important
+        announcements.
       </>
     ),
   },
@@ -57,7 +57,7 @@ function Section({title, to, description}: SectionItem) {
         </div>
         <div className="card__footer">
           <Link className="button button--primary button--block" to={to}>
-            Ver sección
+            View section
           </Link>
         </div>
       </div>
@@ -70,22 +70,21 @@ export default function HomepageFeatures(): ReactNode {
     <section className={styles.features}>
       <div className="container">
         <div className={styles.about}>
-          <Heading as="h2">¿Qué es LOS?</Heading>
+          <Heading as="h2">What is LOS?</Heading>
           <p>
-            <strong>LOS (Lean Origination System)</strong> es el sistema de
-            originación del Comité de Transformación. Gestiona el proceso de
-            originación de punta a punta mediante servicios backend (BFF),
-            flujos de proceso (BPM), procesamiento de documentos con OCR,
-            autenticación centralizada y mensajería de eventos, desplegado sobre
-            AWS.
+            <strong>LOS (Lean Origination System)</strong> is the origination
+            system of the Transformation Committee. It manages the origination
+            process end to end through backend services (BFF), process flows
+            (BPM), document processing with OCR, centralized authentication and
+            event messaging, deployed on AWS.
           </p>
           <p>
-            Esta documentación reúne las reglas, la arquitectura y las
-            herramientas que el equipo utiliza para construirlo.
+            This documentation gathers the rules, architecture and tools the
+            team uses to build it.
           </p>
         </div>
         <Heading as="h2" className={styles.sectionsTitle}>
-          Resumen de la documentación
+          Documentation overview
         </Heading>
         <div className="row">
           {SectionList.map((props, idx) => (
