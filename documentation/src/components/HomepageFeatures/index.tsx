@@ -1,56 +1,65 @@
 import type {ReactNode} from 'react';
 import clsx from 'clsx';
+import Link from '@docusaurus/Link';
 import Heading from '@theme/Heading';
 import styles from './styles.module.css';
 
-type FeatureItem = {
+type SectionItem = {
   title: string;
-  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
+  to: string;
   description: ReactNode;
 };
 
-const FeatureList: FeatureItem[] = [
+const SectionList: SectionItem[] = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Reglas de Desarrollo',
+    to: '/docs/category/reglas-de-desarrollo',
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Convenciones de nomenclatura, idioma del proyecto, documentación de
+        código (JSDoc, GoDoc, Javadoc) y el flujo de trabajo Git-flow con sus
+        reglas de ramas y Pull Requests.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'DDD Starter Kit',
+    to: '/docs/category/ddd-starter-kit',
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Mapa de arquitectura y <code>modkit</code>, el generador de proyectos Go
+        y módulos DDD a partir de plantillas, con binarios para Windows, Linux
+        y macOS.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'News',
+    to: '/news',
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Novedades del equipo y del proyecto: bienvenidas, onboarding y avisos
+        importantes.
       </>
     ),
   },
 ];
 
-function Feature({title, Svg, description}: FeatureItem) {
+function Section({title, to, description}: SectionItem) {
   return (
     <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
+      <div className={clsx('card', styles.sectionCard)}>
+        <div className="card__header">
+          <Heading as="h3">{title}</Heading>
+        </div>
+        <div className="card__body">
+          <p>{description}</p>
+        </div>
+        <div className="card__footer">
+          <Link className="button button--primary button--block" to={to}>
+            Ver sección
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -60,9 +69,27 @@ export default function HomepageFeatures(): ReactNode {
   return (
     <section className={styles.features}>
       <div className="container">
+        <div className={styles.about}>
+          <Heading as="h2">¿Qué es LOS?</Heading>
+          <p>
+            <strong>LOS (Lean Origination System)</strong> es el sistema de
+            originación del Comité de Transformación. Gestiona el proceso de
+            originación de punta a punta mediante servicios backend (BFF),
+            flujos de proceso (BPM), procesamiento de documentos con OCR,
+            autenticación centralizada y mensajería de eventos, desplegado sobre
+            AWS.
+          </p>
+          <p>
+            Esta documentación reúne las reglas, la arquitectura y las
+            herramientas que el equipo utiliza para construirlo.
+          </p>
+        </div>
+        <Heading as="h2" className={styles.sectionsTitle}>
+          Resumen de la documentación
+        </Heading>
         <div className="row">
-          {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
+          {SectionList.map((props, idx) => (
+            <Section key={idx} {...props} />
           ))}
         </div>
       </div>
