@@ -1,0 +1,22 @@
+---
+sidebar_position: 4
+title: Git-flow
+---
+
+# Git-flow
+
+![Diagrama Git-flow](/img/gitflow.svg)
+
+## Ramas protegidas
+
+Solo los autores **Viviana**, **Carlos** y **Cristian** pueden hacer `push` directamente sobre las ramas `main` y `develop`. Ningún otro miembro del equipo debe publicar cambios en estas ramas.
+
+## Pull Requests
+
+Los cambios se integran únicamente mediante Pull Request. Solo se aceptan PR provenientes de las siguientes ramas:
+
+- **feature:** nuevas funcionalidades, por ejemplo `feature/new-window`
+- **bugfix:** corrección de errores, por ejemplo `bugfix/error-login`
+- **hotfix:** correcciones urgentes, por ejemplo `hotfix/payment-timeout`
+
+> **Nota:** Los nombres de las ramas siguen la convención `kebab-case` descrita en [Nomenclaturas](./naming.mdx) y deben escribirse en inglés.

@@ -1,0 +1,52 @@
+package infrastructure
+
+import (
+	"context"
+	"sync"
+)
+
+type Worker func(context.Context) error
+
+type WorkerGroup struct {
+	workers []Worker
+}
+
+func NewWorkerGroup(workers ...Worker) *WorkerGroup {
+	return &WorkerGroup{workers: workers}
+}
+
+func (g *WorkerGroup) Run(ctx context.Context) error {
+	if len(g.workers) == 0 {
+		return nil
+	}
+
+	workerContext, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var waitGroup sync.WaitGroup
+	var once sync.Once
+	var firstErr error
+
+	for _, worker := range g.workers {
+		if worker == nil {
+			continue
+		}
+
+		waitGroup.Add(1)
+		go func(worker Worker) {
+			defer waitGroup.Done()
+			if err := worker(workerContext); err != nil {
+				once.Do(func() {
+					firstErr = err
+					cancel()
+				})
+			}
+		}(worker)
+	}
+
+	waitGroup.Wait()
+	if firstErr != nil {
+		return firstErr
+	}
+	return ctx.Err()
+}

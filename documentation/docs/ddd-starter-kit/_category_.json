@@ -1,0 +1,8 @@
+{
+  "label": "DDD Starter Kit",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Mapa de arquitectura y generador de proyectos Go con módulos DDD."
+  }
+}

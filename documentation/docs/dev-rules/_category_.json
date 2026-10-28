@@ -1,0 +1,8 @@
+{
+  "label": "Reglas de Desarrollo",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Convenciones de nomenclatura, idioma y documentación de código."
+  }
+}

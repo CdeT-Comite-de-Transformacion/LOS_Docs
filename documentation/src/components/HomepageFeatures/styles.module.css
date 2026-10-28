@@ -1,0 +1,19 @@
+.features {
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.about {
+  max-width: 800px;
+  margin: 0 auto 2rem;
+  text-align: center;
+}
+
+.sectionsTitle {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.sectionCard {
+  height: 100%;
+}

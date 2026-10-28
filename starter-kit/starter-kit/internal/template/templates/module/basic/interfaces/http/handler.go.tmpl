@@ -1,0 +1,62 @@
+package http
+
+import (
+ "errors"
+ "net/http"
+ "strconv"
+ "github.com/gin-gonic/gin"
+ "{{ .ImportPath }}/application"
+ "{{ .ImportPath }}/domain"
+)
+
+type Handler struct { service *application.Service }
+func NewHandler(service *application.Service) *Handler { return &Handler{service: service} }
+func (h *Handler) RegisterRoutes(router *gin.Engine) {
+ router.POST("/{{ .RoutePath }}", h.create)
+ router.GET("/{{ .RoutePath }}", h.list)
+ router.GET("/{{ .RoutePath }}/:id", h.get)
+ router.PUT("/{{ .RoutePath }}/:id", h.update)
+ router.DELETE("/{{ .RoutePath }}/:id", h.delete)
+}
+func respondError(c *gin.Context, err error) {
+ status, message := http.StatusInternalServerError, "internal server error"
+ switch {
+ case errors.Is(err, domain.ErrInvalidPagination): status, message = http.StatusBadRequest, err.Error()
+ case errors.Is(err, domain.ErrInvalidID): status, message = http.StatusBadRequest, err.Error()
+ case errors.Is(err, domain.ErrNotFound): status, message = http.StatusNotFound, err.Error()
+ case errors.Is(err, domain.ErrConflict): status, message = http.StatusConflict, err.Error()
+ }
+ c.JSON(status, gin.H{"error": message})
+}
+func (h *Handler) create(c *gin.Context) {
+ var entity domain.{{ .EntityName }}
+ if err := c.ShouldBindJSON(&entity); err != nil { c.JSON(400, gin.H{"error": "invalid JSON body"}); return }
+ if err := h.service.CreateEntity(c.Request.Context(), &entity); err != nil { respondError(c, err); return }
+ c.JSON(201, entity)
+}
+func (h *Handler) list(c *gin.Context) {
+ offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+ if err != nil { respondError(c, domain.ErrInvalidPagination); return }
+ limit, err := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(domain.DefaultLimit)))
+ if err != nil { respondError(c, domain.ErrInvalidPagination); return }
+ entities, err := h.service.List(c.Request.Context(), domain.Pagination{Offset: offset, Limit: limit})
+ if err != nil { respondError(c, err); return }
+ c.JSON(200, entities)
+}
+func (h *Handler) get(c *gin.Context) {
+ entity, err := h.service.FindByID(c.Request.Context(), c.Param("id"))
+ if err != nil { respondError(c, err); return }
+ c.JSON(200, entity)
+}
+func (h *Handler) update(c *gin.Context) {
+ var entity domain.{{ .EntityName }}
+ if err := c.ShouldBindJSON(&entity); err != nil { c.JSON(400, gin.H{"error": "invalid JSON body"}); return }
+ if entity.ID != "" && entity.ID != c.Param("id") { c.JSON(400, gin.H{"error": "body ID must match URL"}); return }
+ entity.ID = c.Param("id")
+ if err := h.service.Update(c.Request.Context(), &entity); err != nil { respondError(c, err); return }
+ c.JSON(200, entity)
+}
+func (h *Handler) delete(c *gin.Context) {
+ if err := h.service.Delete(c.Request.Context(), c.Param("id")); err != nil { respondError(c, err); return }
+ c.Status(204)
+}

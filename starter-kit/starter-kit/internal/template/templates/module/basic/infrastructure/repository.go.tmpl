@@ -1,0 +1,52 @@
+package infrastructure
+
+import (
+ "context"
+ "errors"
+ "gorm.io/gorm"
+ "{{ .ImportPath }}/domain"
+)
+
+type Repository struct { db *gorm.DB }
+func NewRepository(db *gorm.DB) *Repository { return &Repository{db: db} }
+
+func persistenceError(err error) error {
+ if errors.Is(err, gorm.ErrRecordNotFound) { return domain.ErrNotFound }
+ if errors.Is(err, gorm.ErrDuplicatedKey) { return domain.ErrConflict }
+ return err
+}
+
+// Save inserts a new entity; duplicate IDs are rejected.
+func (r *Repository) Save(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+ return persistenceError(r.db.WithContext(ctx).Create(entity).Error)
+}
+func (r *Repository) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
+ var entity domain.{{ .EntityName }}
+ if err := r.db.WithContext(ctx).Where("id = ?", id).First(&entity).Error; err != nil { return nil, persistenceError(err) }
+ return &entity, nil
+}
+func (r *Repository) List(ctx context.Context, pagination domain.Pagination) (domain.Page, error) {
+ if err := pagination.Validate(); err != nil { return domain.Page{}, err }
+ result := domain.Page{
+  Items: make([]domain.{{ .EntityName }}, 0),
+  Offset: pagination.Offset,
+  Limit: pagination.Limit,
+ }
+ query := r.db.WithContext(ctx).Model(&domain.{{ .EntityName }}{})
+ if err := query.Count(&result.Total).Error; err != nil { return domain.Page{}, persistenceError(err) }
+ err := query.Order("id").Limit(pagination.Limit).Offset(pagination.Offset).Find(&result.Items).Error
+ return result, persistenceError(err)
+}
+func (r *Repository) Update(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+ // Select("*") includes zero values in PUT replacements; this never inserts.
+ result := r.db.WithContext(ctx).Model(&domain.{{ .EntityName }}{}).Where("id = ?", entity.ID).Select("*").Updates(entity)
+ if result.Error != nil { return persistenceError(result.Error) }
+ if result.RowsAffected == 0 { return domain.ErrNotFound }
+ return nil
+}
+func (r *Repository) Delete(ctx context.Context, id string) error {
+ result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&domain.{{ .EntityName }}{})
+ if result.Error != nil { return persistenceError(result.Error) }
+ if result.RowsAffected == 0 { return domain.ErrNotFound }
+ return nil
+}

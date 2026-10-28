@@ -1,0 +1,20 @@
+package domain
+
+type {{ .EntityName }} struct {
+	ID     string
+	events []Event
+}
+
+func New{{ .EntityName }}(id string) *{{ .EntityName }} {
+	return &{{ .EntityName }}{ID: id, events: make([]Event, 0)}
+}
+
+func (e *{{ .EntityName }}) Record(event Event) {
+	e.events = append(e.events, event)
+}
+
+func (e *{{ .EntityName }}) PullEvents() []Event {
+	events := e.events
+	e.events = nil
+	return events
+}

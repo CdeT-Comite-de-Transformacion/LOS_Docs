@@ -1,0 +1,38 @@
+package domain
+
+import "time"
+
+type Event interface {
+	Name() string
+	AggregateID() string
+	OccurredAt() time.Time
+}
+
+type BaseEvent struct {
+	ID string
+	At time.Time
+}
+
+func NewBaseEvent(id string) BaseEvent {
+	return BaseEvent{ID: id, At: time.Now().UTC()}
+}
+
+func (e BaseEvent) AggregateID() string {
+	return e.ID
+}
+
+func (e BaseEvent) OccurredAt() time.Time {
+	return e.At
+}
+
+type {{ .EntityName }}Created struct {
+	BaseEvent
+}
+
+func New{{ .EntityName }}Created(id string) {{ .EntityName }}Created {
+	return {{ .EntityName }}Created{BaseEvent: NewBaseEvent(id)}
+}
+
+func ({{ .EntityName }}Created) Name() string {
+	return "{{ .Package }}.{{ .EntityName }}Created"
+}

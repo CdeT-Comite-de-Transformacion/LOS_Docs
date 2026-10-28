@@ -1,0 +1,17 @@
+package application
+
+import (
+	"context"
+
+	"{{ .ImportPath }}/domain"
+)
+
+type EventPublisher interface {
+	Publish(ctx context.Context, events ...domain.Event) error
+}
+
+type NoopPublisher struct{}
+
+func (NoopPublisher) Publish(context.Context, ...domain.Event) error {
+	return nil
+}

@@ -1,0 +1,12 @@
+package observability
+
+import (
+	"context"
+	"time"
+)
+
+type Hooks interface {
+	CommandStarted(ctx context.Context, name string, at time.Time)
+	CommandFinished(ctx context.Context, name string, duration time.Duration, err error)
+	EventPublished(ctx context.Context, name string, at time.Time)
+}

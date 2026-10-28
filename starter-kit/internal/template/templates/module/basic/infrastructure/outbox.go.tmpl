@@ -1,0 +1,13 @@
+package infrastructure
+
+import (
+	"context"
+
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+)
+
+type Outbox interface {
+	Append(ctx context.Context, event domain.Event) error
+	Pending(ctx context.Context) ([]domain.Event, error)
+	MarkPublished(ctx context.Context, event domain.Event) error
+}

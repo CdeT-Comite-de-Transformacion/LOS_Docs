@@ -1,0 +1,16 @@
+package {{ .Package }}
+
+import (
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/application"
+	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/infrastructure"
+)
+
+type Module struct {
+	Service *application.Service
+}
+
+func New() *Module {
+	repository := infrastructure.NewRepository()
+	service := application.NewService(repository)
+	return &Module{Service: service}
+}
