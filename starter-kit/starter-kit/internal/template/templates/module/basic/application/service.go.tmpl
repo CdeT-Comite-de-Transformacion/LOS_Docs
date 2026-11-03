@@ -7,24 +7,31 @@ import (
 	"{{ .ImportPath }}/domain"
 )
 
-type Service struct {
-	repository domain.Repository
+// {{ .EntityName }}Service coordinates persistence and event publication.
+// TODO(doc): describe business preconditions, authorization and expected errors.
+// ID validation is not an authorization check; define where access is enforced.
+type {{ .EntityName }}Service struct {
+	repository domain.{{ .EntityName }}Repository
 	publisher  EventPublisher
 }
 
-func NewService(repository domain.Repository) *Service {
-	return NewServiceWithPublisher(repository, NoopPublisher{})
+func New{{ .EntityName }}Service(repository domain.{{ .EntityName }}Repository) *{{ .EntityName }}Service {
+	return New{{ .EntityName }}ServiceWithPublisher(repository, NoopPublisher{})
 	}
 
-func NewServiceWithPublisher(repository domain.Repository, publisher EventPublisher) *Service {
-	return &Service{repository: repository, publisher: publisher}
+func New{{ .EntityName }}ServiceWithPublisher(repository domain.{{ .EntityName }}Repository, publisher EventPublisher) *{{ .EntityName }}Service {
+	return &{{ .EntityName }}Service{repository: repository, publisher: publisher}
 }
 
-func (s *Service) Create(ctx context.Context, id string) error {
+func (s *{{ .EntityName }}Service) Create(ctx context.Context, id string) error {
 	return s.CreateEntity(ctx, domain.New{{ .EntityName }}(id))
 }
 
-func (s *Service) CreateEntity(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+// CreateEntity persists the entity before publishing its pending events.
+// Publication failure does not roll back the completed save.
+// TODO(doc): define retry/idempotency behavior or the outbox policy before wiring
+// an external publisher; do not assume atomic persistence and publication.
+func (s *{{ .EntityName }}Service) CreateEntity(ctx context.Context, entity *domain.{{ .EntityName }}) error {
  if entity == nil || strings.TrimSpace(entity.ID) == "" { return domain.ErrInvalidID }
 	entity.Record(domain.New{{ .EntityName }}Created(entity.ID))
 	if err := s.repository.Save(ctx, entity); err != nil {
@@ -34,19 +41,19 @@ func (s *Service) CreateEntity(ctx context.Context, entity *domain.{{ .EntityNam
 }
 
 
-func (s *Service) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
+func (s *{{ .EntityName }}Service) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
  if strings.TrimSpace(id) == "" { return nil, domain.ErrInvalidID }
  return s.repository.FindByID(ctx, id)
 }
-func (s *Service) List(ctx context.Context, pagination domain.Pagination) (domain.Page, error) {
- if err := pagination.Validate(); err != nil { return domain.Page{}, err }
+func (s *{{ .EntityName }}Service) List(ctx context.Context, pagination domain.Pagination) (domain.{{ .EntityName }}Page, error) {
+ if err := pagination.Validate(); err != nil { return domain.{{ .EntityName }}Page{}, err }
  return s.repository.List(ctx, pagination)
 }
-func (s *Service) Update(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+func (s *{{ .EntityName }}Service) Update(ctx context.Context, entity *domain.{{ .EntityName }}) error {
  if entity == nil || strings.TrimSpace(entity.ID) == "" { return domain.ErrInvalidID }
  return s.repository.Update(ctx, entity)
 }
-func (s *Service) Delete(ctx context.Context, id string) error {
+func (s *{{ .EntityName }}Service) Delete(ctx context.Context, id string) error {
  if strings.TrimSpace(id) == "" { return domain.ErrInvalidID }
  return s.repository.Delete(ctx, id)
 }

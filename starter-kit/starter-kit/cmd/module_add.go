@@ -47,8 +47,12 @@ Available elements:
 		if err != nil {
 			return err
 		}
+		gen.DryRun, gen.Output = dryRun, cmd.OutOrStdout()
 		if err := gen.AddModuleElements(moduleAddElementOpts); err != nil {
 			return err
+		}
+		if dryRun {
+			return nil
 		}
 		fmt.Printf("Added %s to module %q\n", args[1], args[0])
 		return nil

@@ -1,0 +1,14 @@
+package domain
+
+// TODO(doc): list business scenarios added here and explain non-obvious test doubles.
+// Keep scenario names descriptive; update the contract when behavior changes.
+import "testing"
+func Test{{ .EntityName }}Events(t *testing.T) {
+ entity := New{{ .EntityName }}("sample-id")
+ if entity.ID != "sample-id" { t.Fatal("constructor lost identity") }
+ event := New{{ .EntityName }}Created(entity.ID)
+ entity.Record(event)
+ events := entity.PullEvents()
+ if len(events)!=1 || events[0].AggregateID()!=entity.ID { t.Fatal("event identity mismatch") }
+ if len(entity.PullEvents())!=0 {t.Fatal("events must be drained after publishing")}
+}

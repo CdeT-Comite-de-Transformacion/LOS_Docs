@@ -1,0 +1,30 @@
+package main
+
+import (
+ "context"
+ "fmt"
+ "log"
+ "os"
+ "time"
+ "{{ .Module }}/internal/platform/database"
+ "{{ .Module }}/migrations"
+)
+
+func main(){
+ if len(os.Args)!=2 || (os.Args[1]!="up" && os.Args[1]!="down" && os.Args[1]!="status"){
+  log.Fatal("usage: go run ./tools/migrate up|down|status (down reverts the last migration)")
+ }
+ db,err:=database.OpenDatabase();if err!=nil{log.Fatal(err)}
+ sqlDB,err:=db.DB();if err!=nil{log.Fatal(err)}
+ defer sqlDB.Close()
+ provider,err:=migrations.Provider(sqlDB);if err!=nil{log.Fatal(err)}
+ ctx,cancel:=context.WithTimeout(context.Background(),5*time.Minute);defer cancel()
+ switch os.Args[1]{
+ case "up": _,err=provider.Up(ctx)
+ case "down": _,err=provider.Down(ctx)
+ case "status":
+  status,e:=provider.Status(ctx);err=e
+  if err==nil{for _,migration:=range status{fmt.Printf("%d\t%s\t%s\n",migration.Source.Version,migration.State,migration.Source.Path)}}
+ }
+ if err!=nil{log.Fatal(err)}
+}

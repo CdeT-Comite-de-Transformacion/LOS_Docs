@@ -2,6 +2,11 @@ package cmd
 
 import (
  "fmt"
+ "context"
+ "github.com/your-org/los-cp/migrations"
+ "github.com/your-org/los-cp/internal/platform/audit"
+ "github.com/gin-gonic/gin"
+ "github.com/your-org/los-cp/internal/platform/database"
  "encoding/json"
  "net/http/httptest"
  "strings"
@@ -10,7 +15,7 @@ import (
 )
 
 func TestGeneratedCRUD(t *testing.T) {
- db, err := OpenDatabase()
+ db, err := database.OpenDatabase()
  if err != nil { t.Fatal(err) }
  sqlDB, err := db.DB()
  if err != nil { t.Fatal(err) }
@@ -21,12 +26,25 @@ func TestGeneratedCRUD(t *testing.T) {
  schema := fmt.Sprintf("modkit_test_%d", time.Now().UnixNano())
  if err := tx.Exec("CREATE SCHEMA " + schema).Error; err != nil { t.Fatal(err) }
  if err := tx.Exec("SET LOCAL search_path TO " + schema).Error; err != nil { t.Fatal(err) }
+
+ entries,err:=migrations.Files.ReadDir("sql");if err!=nil{t.Fatal(err)}
+ for _,entry:=range entries {
+  raw,err:=migrations.Files.ReadFile("sql/"+entry.Name());if err!=nil{t.Fatal(err)}
+  up:=strings.Split(strings.Split(string(raw),"-- +goose Up")[1],"-- +goose Down")[0]
+  if err:=tx.Exec(up).Error;err!=nil{t.Fatal(err)}
+ }
  router := NewRouter()
+ router.Use(func(c *gin.Context){
+  c.Request=c.Request.WithContext(audit.WithIdentity(c.Request.Context(),audit.Identity{ActorID:"test-user",TenantID:"tenant-1",RequestID:"request-1"}))
+  c.Next()
+ })
  for _, initialize := range moduleInitializers {
   if err := initialize(tx, router); err != nil { t.Fatal(err) }
  }
  checks := []struct{ method, path, body string; status int; contains string }{
   {"GET", "/healthz", "", 200, "ok"},
+ {"GET", "/sales/applicant", "", 404, ""},
+ {"GET", "/underwriting/decision", "", 404, ""},
   {"GET", "/sales/customer", "", 200, "[]"},
   {"POST", "/sales/customer", "{", 400, ""},
   {"POST", "/sales/customer", "{}", 400, ""},
@@ -39,8 +57,8 @@ func TestGeneratedCRUD(t *testing.T) {
   {"GET", "/sales/customer/c1", "", 200, `"active":false`},
   {"PUT", "/sales/customer/missing", "{}", 404, ""},
   {"GET", "/sales/customer/missing", "", 404, ""},
-  {"POST", "/sales", `{"id":"s1"}`, 201, "s1"},
-  {"GET", "/sales/s1", "", 200, "s1"},
+  {"POST", "/sales/order", `{"id":"s1"}`, 201, "s1"},
+  {"GET", "/sales/order/s1", "", 200, "s1"},
   {"DELETE", "/sales/customer/c1", "", 204, ""},
   {"GET", "/sales/customer/c1", "", 404, ""},
   {"DELETE", "/sales/customer/c1", "", 404, ""},
@@ -58,7 +76,7 @@ func TestGeneratedCRUD(t *testing.T) {
  }
 
  // Exercise both the module's primary entity and an additional entity.
- for _, path := range []string{"/sales", "/sales/customer"} {
+ for _, path := range []string{"/sales/order", "/sales/customer"} {
   for _, id := range []string{"p3", "p1", "p2"} {
    request := httptest.NewRequest("POST", path, strings.NewReader(fmt.Sprintf(`{"id":%q}`, id)))
    request.Header.Set("Content-Type", "application/json")
@@ -67,7 +85,7 @@ func TestGeneratedCRUD(t *testing.T) {
    if response.Code != 201 { t.Fatalf("seed: %d %s", response.Code, response.Body.String()) }
   }
   total := int64(3)
-  if path == "/sales" { total = 4 } // Existing s1 from CRUD checks.
+  if path == "/sales/order" { total = 4 } // Existing s1 from CRUD checks.
   for _, test := range []struct {
    query string
    offset, size int
@@ -104,4 +122,43 @@ func TestGeneratedCRUD(t *testing.T) {
    if response.Code != 400 { t.Fatalf("%s%s: expected 400, got %d",path,query,response.Code) }
   }
  }
+
+ var entriesAudit []audit.Entry
+ if err:=tx.Where("entity_id = ?","c1").Order("id").Find(&entriesAudit).Error;err!=nil{t.Fatal(err)}
+ if len(entriesAudit)!=3{t.Fatalf("want create/update/delete audit only, got %+v",entriesAudit)}
+ for i,action:=range []string{"create","update","delete"}{
+  entry:=entriesAudit[i]
+  if entry.Action!=action || entry.ActorID!="test-user" || entry.TenantID!="tenant-1" || entry.RequestID!="request-1" || entry.OccurredAt.IsZero(){t.Fatalf("invalid audit: %+v",entry)}
+ }
+ // Audit insertion failure must roll back the business write.
+ if err:=tx.Exec("ALTER TABLE platform_audit_entries RENAME TO audit_unavailable").Error;err!=nil{t.Fatal(err)}
+ response:=httptest.NewRecorder()
+ request:=httptest.NewRequest("POST","/sales/customer",strings.NewReader(`{"id":"must-rollback"}`))
+ request.Header.Set("Content-Type","application/json")
+ router.ServeHTTP(response,request)
+ if response.Code!=500{t.Fatalf("want audit failure, got %d",response.Code)}
+ var count int64
+ if err:=tx.Table("sales__customer").Where("id = ?","must-rollback").Count(&count).Error;err!=nil{t.Fatal(err)}
+ if count!=0{t.Fatal("business write committed without audit")}
+}
+
+// Exercise Goose itself, including idempotent up and reversible down, in an isolated schema.
+func TestVersionedMigrations(t *testing.T){
+ db,err:=database.OpenDatabase();if err!=nil{t.Fatal(err)}
+ sqlDB,err:=db.DB();if err!=nil{t.Fatal(err)}
+ sqlDB.SetMaxOpenConns(1)
+ defer sqlDB.Close()
+ schema:=fmt.Sprintf("modkit_migrations_%d",time.Now().UnixNano())
+ if err:=db.Exec("CREATE SCHEMA "+schema).Error;err!=nil{t.Fatal(err)}
+ defer func(){
+  if err:=db.Exec("DROP SCHEMA "+schema+" CASCADE").Error;err!=nil{t.Error(err)}
+ }()
+ if err:=db.Exec("SET search_path TO "+schema).Error;err!=nil{t.Fatal(err)}
+ provider,err:=migrations.Provider(sqlDB);if err!=nil{t.Fatal(err)}
+ first,err:=provider.Up(context.Background());if err!=nil{t.Fatal(err)}
+ if len(first)<3{t.Fatal("expected bootstrap, audit and entity migrations")}
+ again,err:=provider.Up(context.Background());if err!=nil || len(again)!=0{t.Fatalf("up is not idempotent: %v",err)}
+ if err:=migrations.Check(context.Background(),sqlDB);err!=nil{t.Fatal(err)}
+ if _,err:=provider.Down(context.Background());err!=nil{t.Fatal(err)}
+ if _,err:=provider.Up(context.Background());err!=nil{t.Fatal(err)}
 }

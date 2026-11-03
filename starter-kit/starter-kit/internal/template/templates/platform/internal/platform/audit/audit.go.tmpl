@@ -1,0 +1,49 @@
+package audit
+
+// TODO(doc): document the project-specific resource names, permissions, timeouts,
+// retry/idempotency policy and connection lifecycle when wiring this adapter.
+// Use configuration variable names in examples, never credentials or payloads.
+
+import (
+ "context"
+ "fmt"
+ "time"
+ "gorm.io/gorm"
+)
+
+type Identity struct { ActorID, TenantID, RequestID string }
+type identityKey struct{}
+
+// WithIdentity must be called by trusted authentication/job code, never from raw actor headers.
+func WithIdentity(ctx context.Context, identity Identity) context.Context {
+ return context.WithValue(ctx,identityKey{},identity)
+}
+func IdentityFrom(ctx context.Context) Identity {
+ identity,_:=ctx.Value(identityKey{}).(Identity)
+ if identity.ActorID=="" { identity.ActorID="anonymous" }
+ return identity
+}
+
+type Entry struct {
+ ID int64
+ OccurredAt time.Time
+ ActorID string
+ TenantID string
+ RequestID string
+ Module string
+ Entity string
+ EntityID string
+ Action string
+}
+func (Entry) TableName()string{return "platform_audit_entries"}
+
+// Record uses the caller's transaction so audit failure rolls back the business write.
+// This records identifiers and actions, not request bodies or sensitive field values.
+func Record(ctx context.Context, tx *gorm.DB, module, entity, id, action string) error {
+ if module=="" || entity=="" || id=="" || action==""{return fmt.Errorf("audit identifiers and action are required")}
+ identity:=IdentityFrom(ctx)
+ return tx.WithContext(ctx).Create(&Entry{
+  OccurredAt:time.Now().UTC(),ActorID:identity.ActorID,TenantID:identity.TenantID,
+  RequestID:identity.RequestID,Module:module,Entity:entity,EntityID:id,Action:action,
+ }).Error
+}

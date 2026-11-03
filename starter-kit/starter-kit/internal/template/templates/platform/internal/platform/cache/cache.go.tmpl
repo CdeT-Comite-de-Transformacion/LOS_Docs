@@ -1,0 +1,17 @@
+package cache
+
+import (
+ "context"
+ "errors"
+ "time"
+)
+
+var ErrMiss=errors.New("cache miss")
+
+// Store is the application-facing cache contract. Redis is an optional adapter.
+// Callers choose TTL and invalidate keys after a successful database commit.
+type Store interface {
+ Get(context.Context,string)([]byte,error)
+ Set(context.Context,string,[]byte,time.Duration)error
+ Delete(context.Context,string)error
+}

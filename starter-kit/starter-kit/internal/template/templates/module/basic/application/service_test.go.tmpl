@@ -1,0 +1,29 @@
+package application
+
+// TODO(doc): list business scenarios added here and explain non-obvious test doubles.
+// Keep scenario names descriptive; update the contract when behavior changes.
+import("context";"errors";"testing";"{{ .ImportPath }}/domain")
+type {{ .EntityName }}TestRepository struct { domain.{{ .EntityName }}Repository; saveError error; saved *domain.{{ .EntityName }}; pagination domain.Pagination }
+func(r *{{ .EntityName }}TestRepository) Save(ctx context.Context, e *domain.{{ .EntityName }})error{r.saved=e;return r.saveError}
+func(r *{{ .EntityName }}TestRepository) List(ctx context.Context, p domain.Pagination)(domain.{{ .EntityName }}Page,error){r.pagination=p;return domain.{{ .EntityName }}Page{},nil}
+type {{ .EntityName }}TestPublisher struct {events []domain.Event}
+func(p *{{ .EntityName }}TestPublisher) Publish(ctx context.Context, events ...domain.Event)error{p.events=append(p.events,events...);return nil}
+func Test{{ .EntityName }}Create(t *testing.T){
+ for _,fail:=range []bool{false,true}{t.Run(map[bool]string{false:"success",true:"repository failure"}[fail],func(t *testing.T){
+ repo:=&{{ .EntityName }}TestRepository{}; publisher:=&{{ .EntityName }}TestPublisher{}
+ failure:=errors.New("write failed");if fail{repo.saveError=failure}
+ service:=New{{ .EntityName }}ServiceWithPublisher(repo,publisher)
+ err:=service.Create(context.Background(),"sample-id")
+ if fail {if !errors.Is(err,failure)||len(publisher.events)!=0{t.Fatal("failed write must not publish")};return}
+ if err!=nil || repo.saved==nil || len(publisher.events)!=1 {t.Fatalf("create: %v",err)}
+ })}
+}
+func Test{{ .EntityName }}ValidationAndPagination(t *testing.T){
+ repo:=&{{ .EntityName }}TestRepository{};service:=New{{ .EntityName }}Service(repo);ctx:=context.Background()
+ if !errors.Is(service.Create(ctx," "),domain.ErrInvalidID){t.Fatal("blank ID accepted")}
+ if !errors.Is(service.Update(ctx,nil),domain.ErrInvalidID){t.Fatal("nil entity accepted")}
+ if _,err:=service.List(ctx,domain.Pagination{Limit:0});err==nil{t.Fatal("invalid pagination accepted")}
+ page:=domain.Pagination{Limit:10,Offset:20}
+ if _,err:=service.List(ctx,page);err!=nil{t.Fatal(err)}
+ if repo.pagination!=page{t.Fatal("pagination was not forwarded")}
+}

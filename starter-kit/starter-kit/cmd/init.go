@@ -10,7 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/your-org/modkit/internal/config"
+	"github.com/your-org/modkit/internal/generator"
 	"github.com/your-org/modkit/internal/naming"
+	fileplan "github.com/your-org/modkit/internal/scaffold"
+	"gopkg.in/yaml.v3"
 )
 
 func initProject(cfg config.Config) error {
@@ -29,51 +32,72 @@ func initProjectWithTemplate(cfg config.Config, projectTemplate string) error {
 		return fmt.Errorf("unknown project template %q; use http or console", projectTemplate)
 	}
 
-	for _, path := range []string{"main.go", filepath.Join("cmd", "root.go"), filepath.Join("cmd", "database.go"), "go.mod"} {
-		if _, err := os.Stat(path); err == nil {
-			return fmt.Errorf("%s already exists", path)
-		}
-	}
-
-	if err := os.MkdirAll("cmd", 0o755); err != nil {
+	files, err := projectFiles(cfg, projectTemplate)
+	if err != nil {
 		return err
 	}
-
-	mainContent := fmt.Sprintf("package main\n\nimport \"%s/cmd\"\n\nfunc main() {\n\tcmd.Execute()\n}\n", projectModule)
-	if err := writeGoSource("main.go", mainContent); err != nil {
-		return err
-	}
-
-	rootContent := projectRootContent(cfg.Project.Name, projectTemplate)
-	if err := writeGoSource(filepath.Join("cmd", "root.go"), rootContent); err != nil {
-		return err
-	}
-
-	goModContent := fmt.Sprintf("module %s\n\ngo 1.24\n\nrequire (\n gorm.io/gorm v1.30.0\n gorm.io/driver/postgres v1.6.0\n)\n", projectModule)
-	if projectTemplate == "http" {
-		goModContent += "\nrequire github.com/gin-gonic/gin v1.11.0\n"
-	}
-	if err := os.WriteFile("go.mod", []byte(goModContent), 0o644); err != nil {
-		return err
-	}
-
-	return writeGoSource(filepath.Join("cmd", "database.go"), databaseContent)
+	return fileplan.Write(files, nil, false, nil)
 }
 
-func projectRootContent(projectName, projectTemplate string) string {
+func projectFiles(cfg config.Config, projectTemplate string) (map[string][]byte, error) {
+	projectModule := cfg.Project.Module
+	if projectTemplate == "" {
+		projectTemplate = "http"
+	}
+	if projectTemplate != "http" && projectTemplate != "console" {
+		return nil, fmt.Errorf("unknown project template %q", projectTemplate)
+	}
+	files := map[string][]byte{}
+	files["main.go"] = []byte(fmt.Sprintf("package main\nimport %q\nfunc main(){cmd.Execute()}\n", projectModule+"/cmd"))
+	files[filepath.Join("cmd", "root.go")] = []byte(projectRootContent(cfg.Project.Name, projectTemplate, projectModule))
+	files[filepath.Join("internal", "platform", "database", "database.go")] = []byte(strings.ReplaceAll(databaseContent, "PROJECT_MODULE", projectModule))
+	goMod := fmt.Sprintf("module %s\n\ngo 1.24\n\nrequire (\n gorm.io/gorm v1.30.0\n github.com/DATA-DOG/go-sqlmock v1.5.2\n gorm.io/driver/postgres v1.6.0\n github.com/pressly/goose/v3 v3.24.3\n go.opentelemetry.io/otel v1.38.0\n go.opentelemetry.io/otel/trace v1.38.0\n go.opentelemetry.io/otel/sdk v1.38.0\n go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0\n)\n", projectModule)
+	if projectTemplate == "http" {
+		goMod += "\nrequire github.com/gin-gonic/gin v1.11.0\n"
+	}
+	files["go.mod"] = []byte(goMod)
+	platform, err := generator.PlatformFiles(cfg)
+	if err != nil {
+		return nil, err
+	}
+	for path, content := range platform {
+		files[path] = content
+	}
+	for path, content := range files {
+		if strings.HasSuffix(path, ".go") {
+			formatted, err := format.Source(content)
+			if err != nil {
+				return nil, fmt.Errorf("format %s: %w", path, err)
+			}
+			files[path] = formatted
+		}
+	}
+	return files, nil
+}
+
+func projectRootContent(projectName, projectTemplate, projectModule string) string {
 	if projectTemplate == "http" {
 		return fmt.Sprintf(`package cmd
 
 import (
 	"fmt"
 	"log"
+ "context"
+ "time"
+ "os/signal"
+ "syscall"
+ "net/http"
+ "errors"
+ %q
 
 	"github.com/gin-gonic/gin"
  "gorm.io/gorm"
+ %q
 )
 
 func NewRouter() *gin.Engine {
 	router := gin.Default()
+ router.Use(telemetry.Middleware())
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "ok\n")
 	})
@@ -83,7 +107,12 @@ func NewRouter() *gin.Engine {
 var moduleInitializers []func(*gorm.DB, *gin.Engine) error
 
 func Run() error {
- db, err := OpenDatabase()
+ ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+ defer stop()
+ shutdown, err := telemetry.Setup(ctx)
+ if err != nil { return err }
+ defer func(){ flush, cancel := context.WithTimeout(context.Background(), 5*time.Second); defer cancel(); _ = shutdown(flush) }()
+ db, err := database.OpenDatabase()
  if err != nil { return err }
  sqlDB, err := db.DB()
  if err != nil { return err }
@@ -94,7 +123,15 @@ func Run() error {
  }
  addr := ":8080"
 	fmt.Printf("%%s listening on %%s\n", %q, addr)
-	return router.Run(addr)
+	server := &http.Server{Addr: addr, Handler: router, ReadHeaderTimeout: 10*time.Second}
+ done := make(chan error, 1)
+ go func(){ done <- server.ListenAndServe() }()
+ select {
+ case err := <-done: if errors.Is(err, http.ErrServerClosed) { return nil }; return err
+ case <-ctx.Done():
+  closing, cancel := context.WithTimeout(context.Background(), 10*time.Second); defer cancel()
+  return server.Shutdown(closing)
+ }
 }
 
 func Execute() {
@@ -102,22 +139,27 @@ func Execute() {
 		log.Fatal(err)
 	}
 }
-`, projectName)
+`, projectModule+"/internal/platform/telemetry", projectModule+"/internal/platform/database", projectName)
 	}
 
 	return fmt.Sprintf(`package cmd
 
-import ("fmt"; "log")
+import ("fmt"; "log"; "context"; "time"; %q; %q)
 
-func Execute() {
- db, err := OpenDatabase()
- if err != nil { log.Fatal(err) }
+func Run() error {
+ shutdown, err := telemetry.Setup(context.Background())
+ if err != nil { return err }
+ defer func(){ ctx, cancel := context.WithTimeout(context.Background(),5*time.Second); defer cancel(); _ = shutdown(ctx) }()
+ db, err := database.OpenDatabase()
+ if err != nil { return err }
  sqlDB, err := db.DB()
- if err != nil { log.Fatal(err) }
+ if err != nil { return err }
  defer sqlDB.Close()
  fmt.Println(%q)
+ return nil
 }
-`, "Welcome to "+projectName)
+func Execute(){ if err := Run(); err != nil { log.Fatal(err) } }
+`, projectModule+"/internal/platform/database", projectModule+"/internal/platform/telemetry", "Welcome to "+projectName)
 }
 
 var initCmd = &cobra.Command{
@@ -138,6 +180,9 @@ Available templates:
 
 		cfg := config.Default()
 		projectName := strings.TrimSpace(initName)
+		if projectName == "" && dryRun {
+			projectName = cfg.Project.Name
+		}
 		if projectName == "" {
 			var err error
 			projectName, err = promptProjectName()
@@ -152,11 +197,21 @@ Available templates:
 		cfg.Project.Name = projectName
 		cfg.Project.Module = "github.com/your-org/" + projectSlug
 		cfg.Project.Template = initTemplate
-		if err := initProjectWithTemplate(cfg, initTemplate); err != nil {
+
+		files, err := projectFiles(cfg, initTemplate)
+		if err != nil {
 			return err
 		}
-		if err := config.Save(config.DefaultFilename, cfg); err != nil {
+		configData, err := yaml.Marshal(cfg)
+		if err != nil {
 			return err
+		}
+		files[config.DefaultFilename] = configData
+		if err := fileplan.Write(files, nil, dryRun, cmd.OutOrStdout()); err != nil {
+			return err
+		}
+		if dryRun {
+			return nil
 		}
 
 		fmt.Printf("Created %s\n", config.DefaultFilename)
@@ -187,17 +242,23 @@ func init() {
 	initCmd.Flags().StringVar(&initName, "name", "", "project name (skips the interactive prompt)")
 }
 
-const databaseContent = `package cmd
+const databaseContent = `package database
 
 import (
  "os"
+ "context"
  "fmt"
+ "PROJECT_MODULE/internal/platform/telemetry"
  "gorm.io/driver/postgres"
  "gorm.io/gorm"
 )
 
 // OpenDatabase opens the shared database. Replace the dialector to use another engine.
-func OpenDatabase() (*gorm.DB, error) {
+func OpenDatabase() (*gorm.DB, error) { return OpenDatabaseContext(context.Background()) }
+
+func OpenDatabaseContext(ctx context.Context) (*gorm.DB, error) {
+ _, span := telemetry.Start(ctx,"platform.database.OpenDatabase")
+ defer span.End()
  dsn := os.Getenv("DB_DSN")
  if dsn == "" { return nil, fmt.Errorf("DB_DSN is required (PostgreSQL connection string)") }
  db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})

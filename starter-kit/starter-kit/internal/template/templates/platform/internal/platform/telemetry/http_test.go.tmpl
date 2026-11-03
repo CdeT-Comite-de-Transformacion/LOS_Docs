@@ -1,0 +1,15 @@
+package telemetry
+import("net/http/httptest";"testing";"github.com/gin-gonic/gin";"go.opentelemetry.io/otel";"go.opentelemetry.io/otel/sdk/trace";"go.opentelemetry.io/otel/sdk/trace/tracetest")
+func TestHTTPTracePropagation(t *testing.T){
+ t.Setenv("DEBUG","true")
+ recorder:=tracetest.NewSpanRecorder();provider:=trace.NewTracerProvider(trace.WithSpanProcessor(recorder))
+ previous:=otel.GetTracerProvider();otel.SetTracerProvider(provider);defer otel.SetTracerProvider(previous)
+ router:=gin.New();router.Use(Middleware());router.GET("/items/:id",func(c *gin.Context){_,span:=Start(c.Request.Context(),"service.find");span.End();c.Status(200)})
+ request:=httptest.NewRequest("GET","/items/private-id?token=secret",nil)
+ request.Header.Set("traceparent","00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")
+ router.ServeHTTP(httptest.NewRecorder(),request)
+ spans:=recorder.Ended();if len(spans)!=2{t.Fatalf("got %d spans",len(spans))}
+ if spans[1].Name()!="GET /items/:id"{t.Fatal("span must use route template")}
+ if spans[1].SpanContext().TraceID().String()!="0123456789abcdef0123456789abcdef"{t.Fatal("remote trace lost")}
+ if spans[0].Parent().SpanID()!=spans[1].SpanContext().SpanID(){t.Fatal("handler context lost")}
+}

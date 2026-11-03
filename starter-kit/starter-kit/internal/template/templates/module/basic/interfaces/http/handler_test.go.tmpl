@@ -1,0 +1,17 @@
+package http
+
+// TODO(doc): list business scenarios added here and explain non-obvious test doubles.
+// Keep scenario names descriptive; update the contract when behavior changes.
+import("context";"net/http/httptest";"testing";"github.com/gin-gonic/gin";"{{ .ImportPath }}/application";"{{ .ImportPath }}/domain")
+type {{ .EntityName }}HTTPTestRepository struct{domain.{{ .EntityName }}Repository; pagination domain.Pagination}
+func(r *{{ .EntityName }}HTTPTestRepository) List(ctx context.Context,p domain.Pagination)(domain.{{ .EntityName }}Page,error){r.pagination=p;return domain.{{ .EntityName }}Page{},nil}
+func Test{{ .EntityName }}ListPagination(t *testing.T){
+ repo:=&{{ .EntityName }}HTTPTestRepository{};router:=gin.New()
+ New{{ .EntityName }}Handler(application.New{{ .EntityName }}Service(repo)).RegisterRoutes(router)
+ for _,tc:=range []struct{query string;status int}{ {"?limit=10&offset=20",200},{"?limit=0",400},{"?offset=-1",400} }{
+ response:=httptest.NewRecorder();request:=httptest.NewRequest("GET","/{{ .RoutePath }}"+tc.query,nil)
+ router.ServeHTTP(response,request)
+ if response.Code!=tc.status{t.Fatalf("%s: got %d: %s",tc.query,response.Code,response.Body.String())}
+ }
+ if repo.pagination.Limit!=10||repo.pagination.Offset!=20{t.Fatal("pagination was not forwarded")}
+}

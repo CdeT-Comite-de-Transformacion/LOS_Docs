@@ -1,0 +1,7 @@
+package domain
+import("testing";"time")
+func TestBaseEventIdentity(t *testing.T){
+ before:=time.Now();event:=NewBaseEvent("sample-id")
+ if event.AggregateID()!="sample-id" {t.Fatal("aggregate identity lost")}
+ if event.OccurredAt().Before(before)||event.OccurredAt().After(time.Now()){t.Fatal("invalid event timestamp")}
+}

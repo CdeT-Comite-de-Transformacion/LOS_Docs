@@ -1,7 +1,10 @@
 package domain
 
+// {{ .EntityName }} represents a domain entity in {{ .ModuleDir }}.
+// TODO(doc): define its business meaning, identity lifecycle and invariants.
+// State which transitions are permitted and which fields contain sensitive data.
 type {{ .EntityName }} struct {
-	ID string `json:"id" gorm:"primaryKey"`
+	ID string `json:"id" {{ if .CRUD }}gorm:"primaryKey"{{ end }}`
 {{ range .Fields }}	{{ .Name }} {{ .Type }} `json:"{{ .JSON }}"`
 {{ end }}
 	events []Event
@@ -21,4 +24,4 @@ func (e *{{ .EntityName }}) PullEvents() []Event {
 	return events
 }
 
-func ({{ .EntityName }}) TableName() string { return "{{ .TableName }}" }
+{{ if .CRUD }}func ({{ .EntityName }}) TableName() string { return "{{ .TableName }}" }{{ end }}
