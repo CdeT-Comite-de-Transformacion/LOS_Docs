@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/your-org/modkit/internal/config"
-	"github.com/your-org/modkit/internal/generator"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/generator"
 )
 
 func init() {

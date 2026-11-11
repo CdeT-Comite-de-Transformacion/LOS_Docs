@@ -6,8 +6,8 @@ import (
 	"regexp"
 
 	"github.com/spf13/cobra"
-	"github.com/your-org/modkit/internal/migration"
-	fileplan "github.com/your-org/modkit/internal/scaffold"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/migration"
+	fileplan "github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/scaffold"
 )
 
 func init() {

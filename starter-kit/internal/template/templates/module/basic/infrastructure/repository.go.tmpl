@@ -1,22 +1,67 @@
 package infrastructure
 
 import (
-	"context"
-	"fmt"
-
-	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+ "context"
+ "errors"
+ "gorm.io/gorm"
+ "{{ .ImportPath }}/domain"
+ {{ if .Audit }}"{{ .ModulePath }}/internal/platform/audit"{{ end }}
 )
 
-type Repository struct{}
+// {{ .EntityName }}Repository implements the domain contract using the shared DB.
+// Writes use a transaction; configured audit records participate in that transaction.
+// TODO(doc): describe indexes, tenant filtering, conflict detection and consistency
+// guarantees when adapting these queries. The caller owns the DB lifecycle.
+type {{ .EntityName }}Repository struct { db *gorm.DB }
+func New{{ .EntityName }}Repository(db *gorm.DB) *{{ .EntityName }}Repository { return &{{ .EntityName }}Repository{db: db} }
 
-func NewRepository() *Repository {
-	return &Repository{}
+func {{ .EntityName }}persistenceError(err error) error {
+ if errors.Is(err, gorm.ErrRecordNotFound) { return domain.ErrNotFound }
+ if errors.Is(err, gorm.ErrDuplicatedKey) { return domain.ErrConflict }
+ return err
 }
 
-func (r *Repository) Save(ctx context.Context, entity *domain.{{ .EntityName }}) error {
-	return nil
+// Save inserts a new entity; duplicate IDs are rejected.
+func (r *{{ .EntityName }}Repository) Save(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+ err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB)error{
+  if err:=tx.Create(entity).Error;err!=nil{return err}
+  {{ if .Audit }}return audit.Record(ctx,tx,"{{ .ModuleDir }}","{{ .EntityName }}",entity.ID,"create"){{ else }}return nil{{ end }}
+ })
+ return {{ .EntityName }}persistenceError(err)
 }
-
-func (r *Repository) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
-	return nil, fmt.Errorf("%w: %s", domain.ErrNotFound, id)
+func (r *{{ .EntityName }}Repository) FindByID(ctx context.Context, id string) (*domain.{{ .EntityName }}, error) {
+ var entity domain.{{ .EntityName }}
+ if err := r.db.WithContext(ctx).Where("id = ?", id).First(&entity).Error; err != nil { return nil, {{ .EntityName }}persistenceError(err) }
+ return &entity, nil
+}
+func (r *{{ .EntityName }}Repository) List(ctx context.Context, pagination domain.Pagination) (domain.{{ .EntityName }}Page, error) {
+ if err := pagination.Validate(); err != nil { return domain.{{ .EntityName }}Page{}, err }
+ result := domain.{{ .EntityName }}Page{
+  Items: make([]domain.{{ .EntityName }}, 0),
+  Offset: pagination.Offset,
+  Limit: pagination.Limit,
+ }
+ query := r.db.WithContext(ctx).Model(&domain.{{ .EntityName }}{})
+ if err := query.Count(&result.Total).Error; err != nil { return domain.{{ .EntityName }}Page{}, {{ .EntityName }}persistenceError(err) }
+ err := query.Order("id").Limit(pagination.Limit).Offset(pagination.Offset).Find(&result.Items).Error
+ return result, {{ .EntityName }}persistenceError(err)
+}
+func (r *{{ .EntityName }}Repository) Update(ctx context.Context, entity *domain.{{ .EntityName }}) error {
+ err:=r.db.WithContext(ctx).Transaction(func(tx *gorm.DB)error{
+  // Select("*") includes zero values and never inserts missing records.
+  result:=tx.Model(&domain.{{ .EntityName }}{}).Where("id = ?",entity.ID).Select("*").Updates(entity)
+  if result.Error!=nil{return result.Error}
+  if result.RowsAffected==0{return domain.ErrNotFound}
+  {{ if .Audit }}return audit.Record(ctx,tx,"{{ .ModuleDir }}","{{ .EntityName }}",entity.ID,"update"){{ else }}return nil{{ end }}
+ })
+ return {{ .EntityName }}persistenceError(err)
+}
+func (r *{{ .EntityName }}Repository) Delete(ctx context.Context,id string)error{
+ err:=r.db.WithContext(ctx).Transaction(func(tx *gorm.DB)error{
+  result:=tx.Where("id = ?",id).Delete(&domain.{{ .EntityName }}{})
+  if result.Error!=nil{return result.Error}
+  if result.RowsAffected==0{return domain.ErrNotFound}
+  {{ if .Audit }}return audit.Record(ctx,tx,"{{ .ModuleDir }}","{{ .EntityName }}",id,"delete"){{ else }}return nil{{ end }}
+ })
+ return {{ .EntityName }}persistenceError(err)
 }

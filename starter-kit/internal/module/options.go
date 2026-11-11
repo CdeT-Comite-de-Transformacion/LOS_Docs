@@ -5,5 +5,6 @@ type Options struct {
 	Type      string
 	Force     bool
 	CreateAll bool
+	NoCRUD    bool
 	Elements  []string
 }

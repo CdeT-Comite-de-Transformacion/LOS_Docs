@@ -7,8 +7,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/your-org/modkit/internal/config"
-	templatefs "github.com/your-org/modkit/internal/template"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
+	templatefs "github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/template"
 )
 
 func allPlatformFiles(cfg config.Config) (map[string][]byte, error) {

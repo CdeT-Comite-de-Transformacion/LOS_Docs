@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version is injected at build time using Go linker flags.
-var version = "dev"
+// version defaults to the current development baseline and is overridden for releases.
+var version = "0.3.0"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",

@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/config"
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/generator"
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/module"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/generator"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/module"
 )
 
 var moduleAddElementOpts module.Options
@@ -47,8 +47,12 @@ Available elements:
 		if err != nil {
 			return err
 		}
+		gen.DryRun, gen.Output = dryRun, cmd.OutOrStdout()
 		if err := gen.AddModuleElements(moduleAddElementOpts); err != nil {
 			return err
+		}
+		if dryRun {
+			return nil
 		}
 		fmt.Printf("Added %s to module %q\n", args[1], args[0])
 		return nil

@@ -49,6 +49,7 @@ jobs:
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Expected a stable version tag: vX.Y.Z'; exit 1; }
           version="${RELEASE_TAG#v}"
+          module_path="$(go list -m)"
           mkdir -p dist
           for arch in amd64 arm64; do
             package="modkit_${version}_${TARGET_OS}_${arch}"
@@ -56,9 +57,10 @@ jobs:
             binary=modkit
             if [[ "$TARGET_OS" == windows ]]; then binary=modkit.exe; fi
             CGO_ENABLED=0 GOOS="$TARGET_OS" GOARCH="$arch" go build -trimpath \
-              -ldflags "-s -w -X github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/cmd.version=$version" \
+              -ldflags "-s -w -X ${module_path}/cmd.version=$version" \
               -o "dist/$package/$binary" .
-            cp README.md RELEASES.md modkit.example.yaml "dist/$package/"
+            cp README.md LEEME.md RELEASES.md modkit.example.yaml "dist/$package/"
+            cp -R docs "dist/$package/docs"
             if [[ "$TARGET_OS" == windows ]]; then
               powershell.exe -NoProfile -Command "Compress-Archive -Path 'dist/$package/*' -DestinationPath 'dist/$package.zip'"
             else

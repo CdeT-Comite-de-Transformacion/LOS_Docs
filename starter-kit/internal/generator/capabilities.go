@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/your-org/modkit/internal/migration"
-	"github.com/your-org/modkit/internal/naming"
-	"github.com/your-org/modkit/internal/scaffold"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/migration"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/naming"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/scaffold"
 	"golang.org/x/mod/modfile"
 )
 

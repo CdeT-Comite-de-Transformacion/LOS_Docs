@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/your-org/modkit/internal/config"
-	"github.com/your-org/modkit/internal/generator"
-	"github.com/your-org/modkit/internal/module"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/generator"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/module"
 )
 
 func scaffold(t *testing.T, template string) string {

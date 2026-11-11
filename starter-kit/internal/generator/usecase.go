@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/your-org/modkit/internal/naming"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/naming"
 )
 
 func (g *Generator) CreateUseCase(moduleName, name, entityName string, force bool) error {
