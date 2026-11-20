@@ -15,7 +15,7 @@ hide_title: true
 </div>
 
 <p align="center">
-  <i>Formato común de las respuestas del BFF: envoltura, errores y correlación.</i>
+  <i>Formato común de las respuestas del BFF y proceso para acordar nuevos contratos.</i>
 </p>
 <p align="center">
   <i><b>Estado: propuesta para revisión</b></i>
@@ -236,10 +236,38 @@ No pudimos cargar la meta del mes.            [Reintentar]
 Código de soporte: 4bf92f35…0e4736  [Copiar]
 ```
 
-## Definición y versionado
+## Nuevos contratos
 
-1. Cada endpoint nuevo se describe primero en OpenAPI 3.1 y se aprueba por PR antes de implementarlo.
-2. Spectral valida en CI las reglas de este documento: envoltura, `problem+json` y nombres.
-3. El frontend genera sus tipos TypeScript desde OpenAPI (`openapi-typescript`).
-4. Las pruebas del BFF validan cada respuesta contra su schema OpenAPI.
-5. Agregar campos opcionales es compatible. Quitar o renombrar un campo requiere publicar el nuevo, marcar el anterior como `deprecated` y retirarlo cuando ningún cliente lo use.
+Cada contrato entre frontend y backend se documenta en `documentation/projects/contratos/` de LOS_Docs, un archivo por dominio (`catalogos-vehiculos.md`, `home.md`), con la estructura de este documento:
+
+| Sección | Contenido |
+| --- | --- |
+| Encabezado | Título, insignias, propósito en una línea y estado (`propuesta para revisión` o `aprobado`). |
+| Objetivo | Pantalla o proceso que atiende y tarea que lo origina. |
+| Endpoints | Método, ruta, parámetros y su descripción en OpenAPI 3.1. |
+| Secciones de `data` | Secciones que usa la respuesta, entre las definidas en este documento. |
+| Ejemplos | Una respuesta completa por endpoint, con envoltura y `meta`. |
+| Reglas de campos | Solo las propias del dominio; las generales se toman de este documento. |
+| Errores | Códigos `code` nuevos, con su estado HTTP y su uso, que se agregan al catálogo. |
+| Por definir | Puntos abiertos, con su responsable. |
+
+### Aprobación
+
+1. Quien necesita el contrato, del frontend o del backend, lo redacta y abre un PR a LOS_Docs.
+2. Los responsables de frontend y backend de la tarea lo revisan.
+3. Con el PR aprobado, el contrato pasa a estado `aprobado` y se comparte con el responsable de backend, de frontend o de ambos, según quién lo solicitó.
+
+### Vía ágil
+
+Los responsables de la tarea pueden acordar implementar el contrato sin esperar el PR. En ese caso:
+
+1. El contrato se registra en `docs/contratos/` del repositorio LOS_CORE, con la misma estructura.
+2. Frontend y backend implementan sobre ese archivo.
+3. El PR a LOS_Docs se abre después, con el contrato tal como quedó implementado.
+
+## Versionado y validación
+
+1. Spectral valida en CI las reglas de este documento: envoltura, `problem+json` y nombres.
+2. El frontend genera sus tipos TypeScript desde OpenAPI (`openapi-typescript`).
+3. Las pruebas del BFF validan cada respuesta contra su schema OpenAPI.
+4. Agregar campos opcionales es compatible. Quitar o renombrar un campo requiere publicar el nuevo, marcar el anterior como `deprecated` y retirarlo cuando ningún cliente lo use.
