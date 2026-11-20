@@ -32,7 +32,8 @@ Formato común para las respuestas HTTP que el BFF entrega al frontend. El objet
 | --- | --- |
 | Definición del contrato | OpenAPI 3.1 |
 | Formato de errores | RFC 9457, Problem Details for HTTP APIs |
-| Identificador de correlación | W3C Trace Context (`traceparent`) |
+| Identificador de correlación | W3C Trace Context (`trace-id` de 32 caracteres hexadecimales) |
+| Eventos en tiempo real | Server-Sent Events (HTML Living Standard) |
 | Fechas y periodos | ISO 8601 |
 | Moneda | ISO 4217 |
 
@@ -55,7 +56,35 @@ Toda respuesta `2xx` con cuerpo tiene dos bloques:
 | `data` | La información que la pantalla necesita, organizada en las secciones de la tabla siguiente. |
 | `meta` | Datos de la respuesta, no del negocio: `traceId` (siempre), `generatedAt` (siempre) y `page` en colecciones paginadas (`{ "size": 50, "nextCursor": "..." }`). |
 
-Los eventos SSE usan la misma envoltura en el campo `data:` de cada evento.
+### Identificador de correlación
+
+- El BFF genera el `traceId` de cada petición. No adopta el que envíe el cliente: un `traceparent` recibido del navegador solo se registra como enlace en la traza (ver [Observabilidad](../observabilidad.md#origen-del-traceid)).
+- El mismo `traceId` va en `meta.traceId`, en el `traceId` de los errores y en la cabecera `X-Trace-Id` de todas las respuestas, incluidas las que no tienen cuerpo.
+- Es también el `CorrelationId` de los eventos de auditoría de la petición.
+
+### Eventos SSE
+
+En un stream SSE, `data:` es el nombre del campo del protocolo, no una propiedad del JSON. Su valor es la envoltura completa, en una sola línea, así que el JSON no tiene un `data` dentro de otro:
+
+```text
+event: summary
+id: 42
+data: {"data":{"workflows":[...]},"meta":{"traceId":"0af7651916cd43dd8448eb211c80319c","generatedAt":"2026-11-20T15:30:05Z"}}
+
+: ping
+
+event: error
+data: {"type":"/errores/service-unavailable","title":"No pudimos actualizar el resumen","status":503,"code":"SERVICE_UNAVAILABLE","traceId":"5c3a9f0e1b2d4c6e8f7a6b5c4d3e2f1a"}
+```
+
+| Campo SSE | Regla |
+| --- | --- |
+| `event` | Nombre del evento (`summary`). Las fallas usan `error`. |
+| `id` | Creciente dentro del stream, para reanudar con `Last-Event-ID`. |
+| `data` | Envoltura `{ data, meta }` en una línea; en el evento `error`, el cuerpo `problem+json` de la sección [Errores](#errores). |
+| Comentario `: ping` | Mantiene viva la conexión; el cliente lo ignora. |
+
+Cada evento lleva en `meta.traceId` la traza de la operación que lo produjo, no la de la conexión: una conexión puede durar horas y emitir muchos eventos, y cada uno debe poder rastrearse por separado.
 
 ## Secciones de `data`
 
@@ -200,7 +229,7 @@ La respuesta nunca incluye mensajes internos, códigos gRPC, nombres de servicio
 | `title` | Texto en español apto para el usuario. El frontend puede reemplazarlo según `code`. |
 | `status` | Igual al código HTTP. |
 | `code` | Código estable. Es el único campo con el que el frontend decide su comportamiento. |
-| `traceId` | Identificador de la traza de la petición. |
+| `traceId` | Identificador de la traza de la petición, generado por el BFF. |
 | `errors` | Solo en `422`: lista de `{ "pointer": "/applicant/document", "code": "REQUIRED" }` con JSON Pointer al campo. |
 
 Los errores `5xx` usan siempre un texto genérico y los códigos `SERVICE_UNAVAILABLE` o `INTERNAL`.
