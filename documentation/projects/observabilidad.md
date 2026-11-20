@@ -37,18 +37,19 @@ El BFF y el Core ya tienen instrumentación de trazas: middleware HTTP en el BFF
 | Almacenamiento | Jaeger usa la imagen `latest`, almacenamiento en memoria y UI en `127.0.0.1`; las trazas se pierden al reiniciar. | `docker-compose.yaml`, servicio `jaeger` |
 | Envío | El BFF descarta los envíos fallidos sin reintento ni registro. | `LOS_BFF/internal/platform/telemetry/telemetry.go` |
 | Recurso | Solo `service.name`: no se puede filtrar por versión desplegada ni por ambiente. | `telemetry.go` (BFF y Core) |
+| Origen de la traza | El middleware HTTP del BFF continúa el `traceparent` que llegue en la petición, así que el cliente puede fijar el `trace_id`. | `LOS_BFF/internal/platform/telemetry/telemetry.go`, `Middleware` |
 | Correlación | `X-Request-ID` es un UUID de auditoría distinto del `trace_id`, y el `trace_id` no se devuelve al cliente. | `LOS_BFF/internal/platform/securityaudit/audit.go` |
 | Logs | Texto plano en stdout, sin `trace_id` salvo en los logs de debug de autenticación. | `LOS_BFF/cmd/root.go`, `internal/auth/debug.go` |
 | Métricas | No se emiten; no hay base para alertas ni SLO. | `go.mod` (BFF y Core) |
-| Frontend | No envía `traceparent` ni muestra un código de soporte. | `LOS_FRONTEND/src/lib/api.ts` |
+| Frontend | No muestra un código de soporte. | `LOS_FRONTEND/src/lib/api.ts` |
 | Causa del error | Los spans marcan el código HTTP o gRPC, sin una causa segura (`error.type`). | Middleware HTTP e interceptores gRPC |
 
 ## Arquitectura propuesta
 
 ```text
-Navegador ──traceparent──▶ BFF ──traceparent (metadata gRPC)──▶ Core ──▶ Postgres / Redis
-                           │                                     │
-                           └──────── OTLP: trazas, métricas, logs ┘
+Navegador ──▶ BFF (genera el traceId) ──traceparent (metadata gRPC)──▶ Core ──▶ Postgres / Redis
+               │                                                        │
+               └───────────── OTLP: trazas, métricas, logs ─────────────┘
                                               │
                                               ▼
                                    OpenTelemetry Collector
@@ -119,11 +120,35 @@ service:
 - UI publicada detrás del SSO de Keycloak para el equipo y soporte.
 - Las aplicaciones envían al Collector (`OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317`), no a Jaeger.
 
+## Origen del traceId
+
+El BFF es el límite de confianza: genera el `traceId` y no adopta valores enviados por el cliente.
+
+| Tramo | Regla |
+| --- | --- |
+| Navegador → BFF | El BFF inicia siempre una traza nueva. Si la petición trae un `traceparent` válido (instrumentación del navegador, fase 4), se agrega como *span link*, nunca como padre. `tracestate` y `baggage` del cliente se descartan. |
+| BFF → Core | El BFF propaga su `traceparent` en la metadata gRPC y el Core lo continúa. El Core puede confiar en él porque solo recibe llamadas autenticadas del BFF (`x-core-key`) y no está expuesto. Las llamadas sin `traceparent`, como procesos internos, inician su propia traza en el Core. |
+| BFF → cliente | El `traceId` se devuelve en `X-Trace-Id`, en `meta.traceId` y en el `traceId` de los errores. |
+| Auditoría | El `CorrelationId` de los eventos de auditoría es el `traceId` generado por el BFF, nunca un valor enviado por el cliente. El Core lo toma de la traza propagada, en lugar de la metadata `x-correlation-id`. Los eventos de auditoría se guardan siempre, aunque el muestreo descarte la traza. |
+| Telemetría apagada | El BFF y el Core mantienen un `TracerProvider` sin exportador, de modo que cada petición sigue teniendo `traceId` para la respuesta, los logs y la auditoría. |
+| SSE | La conexión tiene su propia traza. Cada evento abre una traza nueva, enlazada a la de la conexión, y su `traceId` va en `meta.traceId` del evento. |
+
+```go
+// The browser is outside the trust boundary: its context becomes a link, never the parent.
+remote := trace.SpanContextFromContext(propagation.TraceContext{}.Extract(ctx, propagation.HeaderCarrier(r.Header)))
+opts := []trace.SpanStartOption{trace.WithNewRoot(), trace.WithSpanKind(trace.SpanKindServer)}
+if remote.IsValid() {
+    opts = append(opts, trace.WithLinks(trace.Link{SpanContext: remote}))
+}
+ctx, span := tracer.Start(ctx, r.Method+" "+route, opts...)
+w.Header().Set("X-Trace-Id", span.SpanContext().TraceID().String())
+```
+
 ## OpenTelemetry en cada servicio
 
 ### Configuración común (BFF y Core)
 
-- La telemetría se activa con el endpoint OTLP y se puede apagar con `LOS_TELEMETRY_ENABLED=false`. `*_DEBUG` solo controla logs verbosos.
+- La telemetría se activa con el endpoint OTLP y se puede apagar con `LOS_TELEMETRY_ENABLED=false`, que quita el exportador pero no la generación de `traceId`. `*_DEBUG` solo controla logs verbosos.
 - Variables estándar: `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_TRACES_SAMPLER=parentbased_always_on` (el muestreo final lo hace el Collector).
 - Recurso con `service.name`, `service.version` (tag de la imagen) y `deployment.environment.name`.
 - Propagador global solo con `TraceContext`, sin `baggage`.
@@ -147,12 +172,12 @@ otel.SetTextMapPropagator(propagation.TraceContext{})
 
 | Capa | Práctica |
 | --- | --- |
-| HTTP (BFF) | Middleware con lista blanca de atributos (excluye `code` y `state` del callback OAuth) y header `X-Trace-Id` en todas las respuestas. |
+| HTTP (BFF) | Middleware que inicia una traza nueva por petición (ver [Origen del traceId](#origen-del-traceid)), con lista blanca de atributos (excluye `code` y `state` del callback OAuth) y header `X-Trace-Id` en todas las respuestas. |
 | gRPC | Interceptores actuales, o `otelgrpc.NewClientHandler` / `NewServerHandler`, que además emiten métricas `rpc.*`. |
 | Postgres | `otelpgx` sin parámetros de consulta (sin `WithIncludeQueryParameters`). |
 | Redis | `redisotel` sin argumentos de comandos. |
 | Errores | `span.SetStatus(codes.Error, ...)` en `5xx` y `error.type` con el código público o el `reason` de dominio; nunca el mensaje crudo. |
-| Auditoría | El `trace_id` se usa como `CorrelationId` de los eventos de auditoría. |
+| Auditoría | El `trace_id` generado por el BFF se usa como `CorrelationId` de los eventos de auditoría y reemplaza a `X-Request-ID`. |
 
 ### Métricas
 
@@ -168,16 +193,14 @@ otel.SetTextMapPropagator(propagation.TraceContext{})
 
 ### Frontend
 
-1. `apiFetch` genera un `traceparent` por petición, para que el `traceId` exista aunque la respuesta falle sin cuerpo.
-2. `apiFetch` interpreta `problem+json` y lanza `ApiError` con `status`, `code` y `traceId` (ver [Contratos de API](./contratos/contratos-api.md)).
-3. Las pantallas de error muestran el código de soporte con opción de copiarlo.
-4. En una etapa posterior, `@opentelemetry/sdk-trace-web` con instrumentación de `fetch`, enviando al Collector a través del BFF.
+1. `apiFetch` interpreta `problem+json` y lanza `ApiError` con `status`, `code` y `traceId` (ver [Contratos de API](./contratos/contratos-api.md)). Si la respuesta no trae cuerpo, toma el `traceId` de la cabecera `X-Trace-Id`.
+2. Las pantallas de error muestran el código de soporte con opción de copiarlo. Si no hubo respuesta (red caída o tiempo agotado), el front no recibe `traceId` y la pantalla muestra el mensaje sin código.
+3. En una etapa posterior, `@opentelemetry/sdk-trace-web` con instrumentación de `fetch`, enviando al Collector a través del BFF. Su `traceparent` queda como enlace en la traza del BFF, según [Origen del traceId](#origen-del-traceid).
 
 ## Recorrido de un caso de soporte
 
 1. **Reporte:** "No carga la meta del mes, código `4bf92f35…0e4736`".
 2. **Traza (Jaeger):** búsqueda por `traceId`. Se ve:
-   - el span del navegador;
    - `GET /api/home/monthly-goal` en el BFF;
    - la llamada gRPC al Core;
    - una consulta a Postgres de 9 s con `error.type = DEADLINE_EXCEEDED`.
@@ -197,7 +220,7 @@ otel.SetTextMapPropagator(propagation.TraceContext{})
 
 | Fase | Entregable | Repositorios |
 | --- | --- | --- |
-| 1. Errores y correlación | `problem+json` con lista blanca en el BFF, `X-Trace-Id`, `ApiError` y código de soporte en el frontend. | BFF, frontend |
+| 1. Errores y correlación | `traceId` generado en el BFF sin adoptar el del cliente, `X-Trace-Id`, `traceId` como `CorrelationId` de auditoría, `problem+json` con lista blanca, `ApiError` y código de soporte en el frontend. | BFF, frontend |
 | 2. Collector | Collector en `docker-compose`, aplicaciones apuntando a él, Jaeger con versión fija y almacenamiento persistente, telemetría separada de `*_DEBUG`. | Infraestructura, BFF, Core |
 | 3. Logs y métricas | `slog` JSON con `trace_id`, métricas HTTP, gRPC y de negocio, Prometheus, Loki, Grafana y alertas. | BFF, Core, infraestructura |
 | 4. Frontend instrumentado | Trazas del navegador hacia el Collector. | Frontend, BFF |
