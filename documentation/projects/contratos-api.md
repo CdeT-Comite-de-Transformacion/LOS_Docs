@@ -1,9 +1,28 @@
 ---
 sidebar_position: 4
 title: Contratos de API
+hide_title: true
 ---
 
-# Contratos de API
+<h1 align="center">Contratos de API</h1>
+
+<div align="center">
+  <img src="https://img.shields.io/badge/OpenAPI_3.1-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1"/>
+  <img src="https://img.shields.io/badge/RFC_9457-4A4A55?style=for-the-badge" alt="RFC 9457"/>
+  <img src="https://img.shields.io/badge/W3C_Trace_Context-005A9C?style=for-the-badge" alt="W3C Trace Context"/>
+  <img src="https://img.shields.io/badge/JSON-000000?style=for-the-badge&logo=json&logoColor=white" alt="JSON"/>
+  <img src="https://img.shields.io/badge/ISO_8601_%C2%B7_ISO_4217-2E7D32?style=for-the-badge" alt="ISO 8601 · ISO 4217"/>
+</div>
+
+<p align="center">
+  <i>Formato común de las respuestas del BFF: envoltura, errores y correlación.</i>
+</p>
+<p align="center">
+  <i><b>Estado: propuesta para revisión</b></i>
+</p>
+<br />
+
+---
 
 Formato común para las respuestas HTTP que el BFF entrega al frontend. El objetivo es que todos los endpoints se lean igual, que cada dato tenga un solo lugar y que cada error se pueda rastrear con un identificador de correlación.
 

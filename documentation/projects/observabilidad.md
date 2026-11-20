@@ -1,9 +1,28 @@
 ---
 sidebar_position: 5
 title: Observabilidad
+hide_title: true
 ---
 
-# Observabilidad
+<h1 align="center">Observabilidad</h1>
+
+<div align="center">
+  <img src="https://img.shields.io/badge/OpenTelemetry-425CC7?style=for-the-badge&logo=opentelemetry&logoColor=white" alt="OpenTelemetry"/>
+  <img src="https://img.shields.io/badge/Jaeger-60D0E4?style=for-the-badge&logo=jaeger&logoColor=black" alt="Jaeger"/>
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus"/>
+  <img src="https://img.shields.io/badge/Grafana_%C2%B7_Loki-F46800?style=for-the-badge&logo=grafana&logoColor=white" alt="Grafana · Loki"/>
+  <img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go"/>
+</div>
+
+<p align="center">
+  <i>Trazas, métricas y logs correlacionados por traceId con OpenTelemetry y un Collector.</i>
+</p>
+<p align="center">
+  <i><b>Estado: propuesta para revisión</b></i>
+</p>
+<br />
+
+---
 
 Propuesta para que LOS sea observable con OpenTelemetry (OTel): que a partir de un síntoma, como el código de soporte de un error, el equipo llegue a la causa usando solo trazas, logs y métricas, sin desplegar código para investigar.
 
