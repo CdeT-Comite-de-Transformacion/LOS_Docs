@@ -1,0 +1,8 @@
+{
+  "label": "Contratos",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Estándar de respuestas del BFF y contratos aprobados entre frontend y backend."
+  }
+}

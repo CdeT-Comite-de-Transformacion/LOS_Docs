@@ -169,7 +169,7 @@ otel.SetTextMapPropagator(propagation.TraceContext{})
 ### Frontend
 
 1. `apiFetch` genera un `traceparent` por petición, para que el `traceId` exista aunque la respuesta falle sin cuerpo.
-2. `apiFetch` interpreta `problem+json` y lanza `ApiError` con `status`, `code` y `traceId` (ver [Contratos de API](./contratos-api.md)).
+2. `apiFetch` interpreta `problem+json` y lanza `ApiError` con `status`, `code` y `traceId` (ver [Contratos de API](./contratos/contratos-api.md)).
 3. Las pantallas de error muestran el código de soporte con opción de copiarlo.
 4. En una etapa posterior, `@opentelemetry/sdk-trace-web` con instrumentación de `fetch`, enviando al Collector a través del BFF.
 

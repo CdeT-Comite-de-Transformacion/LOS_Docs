@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 1
 title: Contratos de API
 hide_title: true
 ---
@@ -171,7 +171,7 @@ Correspondencia con la respuesta actual de `/api/requests/summary`:
 
 ### Separación por audiencia
 
-La respuesta HTTP es visible en la pestaña Network del navegador, por lo que solo contiene lo que el usuario puede ver: un código público, un texto seguro y el `traceId`. La causa técnica se registra en trazas y logs, y el equipo la consulta con ese `traceId` (ver [Observabilidad](./observabilidad.md)).
+La respuesta HTTP es visible en la pestaña Network del navegador, por lo que solo contiene lo que el usuario puede ver: un código público, un texto seguro y el `traceId`. La causa técnica se registra en trazas y logs, y el equipo la consulta con ese `traceId` (ver [Observabilidad](../observabilidad.md)).
 
 | Audiencia | Recibe | Dónde |
 | --- | --- | --- |
