@@ -1,0 +1,59 @@
+package storage
+
+// TODO(doc): document the project-specific resource names, permissions, timeouts,
+// retry/idempotency policy and connection lifecycle when wiring this adapter.
+// Use configuration variable names in examples, never credentials or payloads.
+
+import (
+ "context"
+ "fmt"
+ "io"
+ "os"
+ "strconv"
+ "time"
+ "github.com/aws/aws-sdk-go-v2/aws"
+ "github.com/aws/aws-sdk-go-v2/config"
+ "github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+type S3 struct { client *s3.Client; presign *s3.PresignClient }
+var _ Objects=(*S3)(nil)
+
+// OpenS3 supports AWS S3 and MinIO via S3_ENDPOINT and S3_PATH_STYLE=true.
+// Credentials use the standard AWS SDK chain, including IAM roles and environment variables.
+func OpenS3(ctx context.Context)(*S3,error){
+ cfg,err:=config.LoadDefaultConfig(ctx);if err!=nil{return nil,err}
+ if cfg.Region==""{return nil,fmt.Errorf("AWS_REGION is required")}
+ pathStyle:=false
+ if value:=os.Getenv("S3_PATH_STYLE");value!=""{
+  pathStyle,err=strconv.ParseBool(value);if err!=nil{return nil,fmt.Errorf("invalid S3_PATH_STYLE")}
+ }
+ client:=s3.NewFromConfig(cfg,func(options *s3.Options){
+  if endpoint:=os.Getenv("S3_ENDPOINT");endpoint!=""{options.BaseEndpoint=aws.String(endpoint)}
+  options.UsePathStyle=pathStyle
+ })
+ return &S3{client:client,presign:s3.NewPresignClient(client)},nil
+}
+func(s *S3) Put(ctx context.Context,bucket,key string,body io.Reader,size int64,contentType string)error{
+ if bucket=="" || key=="" || size<0{return fmt.Errorf("bucket, key and non-negative size required")}
+ _,err:=s.client.PutObject(ctx,&s3.PutObjectInput{
+  Bucket:aws.String(bucket),Key:aws.String(key),Body:body,ContentLength:aws.Int64(size),ContentType:aws.String(contentType),
+ })
+ return err
+}
+func(s *S3) Get(ctx context.Context,bucket,key string)(Object,error){
+ if bucket=="" || key==""{return Object{},fmt.Errorf("bucket and key are required")}
+ output,err:=s.client.GetObject(ctx,&s3.GetObjectInput{Bucket:aws.String(bucket),Key:aws.String(key)})
+ if err!=nil{return Object{},err}
+ return Object{Body:output.Body,Size:aws.ToInt64(output.ContentLength),ContentType:aws.ToString(output.ContentType)},nil
+}
+func(s *S3) Delete(ctx context.Context,bucket,key string)error{
+ if bucket=="" || key==""{return fmt.Errorf("bucket and key are required")}
+ _,err:=s.client.DeleteObject(ctx,&s3.DeleteObjectInput{Bucket:aws.String(bucket),Key:aws.String(key)})
+ return err
+}
+func(s *S3) PresignGet(ctx context.Context,bucket,key string,ttl time.Duration)(string,error){
+ if bucket=="" || key=="" || ttl<=0 || ttl>7*24*time.Hour{return "",fmt.Errorf("bucket/key required; expiry must be >0 and <=7d")}
+ output,err:=s.presign.PresignGetObject(ctx,&s3.GetObjectInput{Bucket:aws.String(bucket),Key:aws.String(key)},func(options *s3.PresignOptions){options.Expires=ttl})
+ if err!=nil{return "",err};return output.URL,nil
+}

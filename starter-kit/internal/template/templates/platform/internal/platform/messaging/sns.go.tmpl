@@ -1,0 +1,37 @@
+package messaging
+
+// TODO(doc): document the project-specific resource names, permissions, timeouts,
+// retry/idempotency policy and connection lifecycle when wiring this adapter.
+// Use configuration variable names in examples, never credentials or payloads.
+
+import (
+ "context"
+ "encoding/json"
+ "fmt"
+ "os"
+ "github.com/aws/aws-sdk-go-v2/aws"
+ "github.com/aws/aws-sdk-go-v2/config"
+ "github.com/aws/aws-sdk-go-v2/service/sns"
+)
+
+type SNS struct { client *sns.Client }
+var _ Publisher=(*SNS)(nil)
+
+func OpenSNS(ctx context.Context)(*SNS,error){
+ cfg,err:=config.LoadDefaultConfig(ctx);if err!=nil{return nil,err}
+ if cfg.Region==""{return nil,fmt.Errorf("AWS_REGION is required")}
+ client:=sns.NewFromConfig(cfg,func(options *sns.Options){
+  if endpoint:=os.Getenv("SNS_ENDPOINT");endpoint!=""{options.BaseEndpoint=aws.String(endpoint)}
+ })
+ return &SNS{client:client},nil
+}
+func(s *SNS) Publish(ctx context.Context,topic string,message Message)error{
+ if topic=="" || message.ID==""{return fmt.Errorf("topic ARN and message ID are required")}
+ // Envelope carries a stable application ID and attributes to consumers.
+ body,err:=json.Marshal(message);if err!=nil{return err}
+ input:=&sns.PublishInput{TopicArn:aws.String(topic),Message:aws.String(string(body))}
+ if message.GroupID!=""{input.MessageGroupId=aws.String(message.GroupID)}
+ if message.DeduplicationID!=""{input.MessageDeduplicationId=aws.String(message.DeduplicationID)}
+ _,err=s.client.Publish(ctx,input)
+ return err
+}

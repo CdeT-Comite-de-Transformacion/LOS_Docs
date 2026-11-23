@@ -1,0 +1,24 @@
+# Code documentation for {{ .Name }}
+
+Write all code, comments and documentation in English. Use English kebab-case
+names for documentation files; keep the conventional `README.md` entry point.
+
+Each module includes a README with questions to resolve while implementing its
+domain. `TODO(doc)` markers identify pending contracts; they do not describe
+validation or guarantees automatically implemented by the generator.
+
+- Document entity purpose and invariants.
+- For use cases, describe authorization, inputs/outputs, errors and external effects.
+- For repositories, specify isolation, concurrency, transactions and auditing.
+- For adapters, document timeouts, retries, idempotency and connection ownership.
+- For HTTP, document example payloads, permissions, pagination and error responses.
+- For tests, use scenario names and explain only non-obvious doubles or boundaries.
+  Keep tests next to the code.
+
+Place Go comments next to declarations, starting with the identifier for exported
+symbols. Explain intent and contracts rather than restating the implementation.
+Examples must not contain secrets or personal data.
+
+Update comments and tests whenever behavior changes. Record cross-module decisions
+in `docs/decisions/` when needed, including context, alternatives, the decision and
+consequences. Replace each `TODO(doc)` with concrete documentation when resolved.

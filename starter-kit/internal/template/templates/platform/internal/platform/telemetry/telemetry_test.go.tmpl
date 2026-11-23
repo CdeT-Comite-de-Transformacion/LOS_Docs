@@ -1,0 +1,36 @@
+package telemetry
+import (
+ "context"
+ "testing"
+ "go.opentelemetry.io/otel"
+ "go.opentelemetry.io/otel/sdk/trace"
+ "go.opentelemetry.io/otel/sdk/trace/tracetest"
+)
+func TestDisabledTracing(t *testing.T){
+ for _,debug:=range []string{"","false"}{t.Run(debug,func(t *testing.T){
+ t.Setenv("DEBUG",debug);t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT",":invalid")
+ previous:=otel.GetTracerProvider();t.Cleanup(func(){otel.SetTracerProvider(previous)})
+ shutdown,err:=Setup(context.Background());if err!=nil{t.Fatal(err)}
+ defer shutdown(context.Background())
+ _,span:=Start(context.Background(),"disabled");defer span.End()
+ if span.IsRecording(){t.Fatal("disabled tracing recorded a span")}
+ })}
+}
+func TestSpanParentAndDebugGate(t *testing.T){
+ t.Setenv("DEBUG","true")
+ recorder:=tracetest.NewSpanRecorder();provider:=trace.NewTracerProvider(trace.WithSpanProcessor(recorder))
+ previous:=otel.GetTracerProvider();otel.SetTracerProvider(provider)
+ defer func(){otel.SetTracerProvider(previous);_ = provider.Shutdown(context.Background())}()
+ ctx,parent:=Start(context.Background(),"parent")
+ _,child:=Start(ctx,"child");child.End();parent.End()
+ spans:=recorder.Ended()
+ if len(spans)!=2||spans[0].Parent().SpanID()!=spans[1].SpanContext().SpanID(){t.Fatal("parent-child propagation failed")}
+ t.Setenv("DEBUG","false")
+ _,disabled:=Start(ctx,"disabled");disabled.End()
+ if disabled.IsRecording()||len(recorder.Ended())!=2{t.Fatal("debug gate failed with active provider")}
+}
+
+func TestInvalidDebug(t *testing.T){
+ t.Setenv("DEBUG","invalid")
+ if _,err:=Setup(context.Background());err==nil{t.Fatal("invalid DEBUG accepted")}
+}

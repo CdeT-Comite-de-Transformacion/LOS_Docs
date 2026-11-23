@@ -3,6 +3,8 @@ package domain
 import "errors"
 
 var (
-	ErrInvalidID = errors.New("invalid entity id")
+ ErrInvalidPagination = errors.New("offset must be non-negative and limit must be between 1 and 100")
+	ErrConflict = errors.New("entity already exists")
+ ErrInvalidID = errors.New("invalid entity id")
 	ErrNotFound  = errors.New("entity not found")
 )

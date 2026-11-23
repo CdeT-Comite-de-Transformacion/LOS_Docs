@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/config"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
 )
 
 func TestInitCreatesGoProjectSkeleton(t *testing.T) {
@@ -54,5 +54,32 @@ func TestInitCreatesGoProjectSkeleton(t *testing.T) {
 	}
 	if !strings.Contains(string(mainData), "package main") {
 		t.Fatalf("main.go should contain package main, got: %s", string(mainData))
+	}
+}
+
+func TestInitDryRunLeavesDirectoryEmpty(t *testing.T) {
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	previousDry, previousName, previousTemplate := dryRun, initName, initTemplate
+	t.Cleanup(func() {
+		_ = os.Chdir(old)
+		dryRun, initName, initTemplate = previousDry, previousName, previousTemplate
+	})
+	dryRun, initName, initTemplate = true, "preview", "http"
+	if err := initCmd.RunE(initCmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("dry run wrote files: %v", entries)
 	}
 }

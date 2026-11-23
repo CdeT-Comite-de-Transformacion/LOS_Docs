@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/config"
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/generator"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/generator"
 )
 
 var moduleValidateCmd = &cobra.Command{

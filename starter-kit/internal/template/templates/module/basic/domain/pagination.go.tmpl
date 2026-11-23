@@ -1,0 +1,17 @@
+package domain
+
+// Pagination uses zero-based offsets and bounds database query size.
+type Pagination struct {
+ Offset int `json:"offset"`
+ Limit int `json:"limit"`
+}
+const DefaultLimit = 20
+const MaxLimit = 100
+
+func (p Pagination) Validate() error {
+ if p.Offset < 0 || p.Limit < 1 || p.Limit > MaxLimit {
+  return ErrInvalidPagination
+ }
+ return nil
+}
+

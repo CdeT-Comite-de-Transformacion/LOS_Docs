@@ -3,10 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/spf13/cobra"
-	"github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit/internal/config"
+	"github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit/internal/config"
 )
 
 var moduleListCmd = &cobra.Command{
@@ -30,7 +31,9 @@ var moduleListCmd = &cobra.Command{
 		var names []string
 		for _, entry := range entries {
 			if entry.IsDir() {
-				names = append(names, entry.Name())
+				if _, err := os.Stat(filepath.Join(cfg.Modules.Root, entry.Name(), "module.go")); err == nil {
+					names = append(names, entry.Name())
+				}
 			}
 		}
 		sort.Strings(names)

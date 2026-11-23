@@ -1,0 +1,41 @@
+package cache
+
+// TODO(doc): document the project-specific resource names, permissions, timeouts,
+// retry/idempotency policy and connection lifecycle when wiring this adapter.
+// Use configuration variable names in examples, never credentials or payloads.
+
+import (
+ "context"
+ "errors"
+ "fmt"
+ "os"
+ "time"
+ "github.com/redis/go-redis/v9"
+)
+
+type Redis struct { client *redis.Client }
+var _ Store=(*Redis)(nil)
+
+// OpenRedis validates the connection when explicitly invoked by application composition.
+func OpenRedis(ctx context.Context)(*Redis,error){
+ url:=os.Getenv("REDIS_URL")
+ if url==""{return nil,fmt.Errorf("REDIS_URL is required")}
+ options,err:=redis.ParseURL(url);if err!=nil{return nil,fmt.Errorf("invalid REDIS_URL")}
+ options.DialTimeout=5*time.Second
+ options.ReadTimeout=3*time.Second
+ options.WriteTimeout=3*time.Second
+ client:=redis.NewClient(options)
+ if err:=client.Ping(ctx).Err();err!=nil{_ = client.Close();return nil,err}
+ return &Redis{client:client},nil
+}
+func(r *Redis) Close()error{return r.client.Close()}
+func(r *Redis) Get(ctx context.Context,key string)([]byte,error){
+ value,err:=r.client.Get(ctx,key).Bytes()
+ if errors.Is(err,redis.Nil){return nil,ErrMiss}
+ return value,err
+}
+func(r *Redis) Set(ctx context.Context,key string,value []byte,ttl time.Duration)error{
+ if ttl<0{return fmt.Errorf("cache TTL must be non-negative")}
+ return r.client.Set(ctx,key,value,ttl).Err()
+}
+func(r *Redis) Delete(ctx context.Context,key string)error{return r.client.Del(ctx,key).Err()}

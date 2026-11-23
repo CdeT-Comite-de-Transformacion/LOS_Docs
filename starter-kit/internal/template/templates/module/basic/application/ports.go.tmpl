@@ -3,13 +3,16 @@ package application
 import (
 	"context"
 
-	"{{ .ModulePath }}/internal/{{ .ModuleDir }}/domain"
+	"{{ .ImportPath }}/domain"
 )
 
+// EventPublisher delivers domain events after persistence.
+// TODO(doc): specify delivery guarantees, duplicate handling and failure recovery.
 type EventPublisher interface {
 	Publish(ctx context.Context, events ...domain.Event) error
 }
 
+// NoopPublisher intentionally discards events. Replace it when delivery is required.
 type NoopPublisher struct{}
 
 func (NoopPublisher) Publish(context.Context, ...domain.Event) error {

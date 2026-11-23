@@ -15,17 +15,17 @@ draft releases, release edits, and manual dispatch do not start a build.
 
 Stable releases use Semantic Versioning tags (`vMAJOR.MINOR.PATCH`). The tag is
 the version source and is injected into `modkit version`. Local builds report
-`dev`. Prerelease tags are not supported.
+`0.3.0`. Prerelease tags are not supported.
 
 After committing and pushing the integration, create and push a version tag
 from the repository root:
 
 ```bash
-git tag -a v0.1.0 -m "Release modkit v0.1.0"
-git push origin v0.1.0
+git tag -a v0.3.0 -m "Release modkit v0.3.0"
+git push origin v0.3.0
 ```
 
-Then open GitHub **Releases > Draft a new release**, select `v0.1.0`, add the
+Then open GitHub **Releases > Draft a new release**, select `v0.3.0`, add the
 release title and notes, and click **Publish release**. The selected tag must
 contain this workflow and the starter kit. Publishing starts the workflow,
 which checks out that tag and attaches the six packages and `checksums.txt`
@@ -65,7 +65,7 @@ go test ./...
 ```
 
 These commands create Go source packages for domain, application,
-infrastructure, and interfaces. The release packages distribute the generator;
+infrastructure, and HTTP layers. The release packages distribute the generator;
 they do not package the generated business modules as executables.
 
 ## Local verification
@@ -79,3 +79,8 @@ go build -o bin/modkit .
 ```
 
 On Windows, use `go build -o bin/modkit.exe .`.
+
+## Repository layout
+
+The maintained generator lives directly in `starter-kit/`. Its Go module path is `github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit`. Release builds resolve that path through `go list -m` before injecting the tag version.
+Packages include README.md, LEEME.md, this release guide, docs/ and the example configuration. Existing generated applications are not rewritten by this consolidation.

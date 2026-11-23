@@ -1,9 +1,10 @@
-module github.com/CdeT-Comite-de-Transformacion/los-bff/starter-kit
+module github.com/CdeT-Comite-de-Transformacion/LOS_Docs/starter-kit
 
 go 1.24
 
 require (
 	github.com/spf13/cobra v1.10.1
+	golang.org/x/mod v0.24.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

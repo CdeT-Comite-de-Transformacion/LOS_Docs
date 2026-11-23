@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var dryRun bool
+
 var rootCmd = &cobra.Command{
 	Use:   "modkit",
 	Short: "DDD module scaffolding CLI",
@@ -21,6 +23,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "preview generated file changes without writing or connecting to services")
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(moduleCmd)
 	rootCmd.AddCommand(systemCmd)

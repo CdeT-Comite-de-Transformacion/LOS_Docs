@@ -1,0 +1,27 @@
+package messaging
+
+import (
+ "context"
+ "time"
+)
+
+type Message struct {
+ ID string
+ Body []byte
+ Attributes map[string]string
+ GroupID string
+ DeduplicationID string
+}
+
+// Publisher publishes to topics, e.g. SNS. A topic is not a queue.
+type Publisher interface { Publish(context.Context,string,Message)error }
+// Queue models SQS delivery and explicit acknowledgment. Receipt handles expire.
+type Delivery struct { Message Message; ReceiptHandle string }
+type Queue interface {
+ Send(context.Context,string,Message)error
+ Receive(context.Context,string,int,time.Duration)([]Delivery,error)
+ Ack(context.Context,string,string)error
+ ExtendVisibility(context.Context,string,string,time.Duration)error
+}
+// Consumers must be idempotent. Configure retry/visibility policies and a DLQ in infrastructure.
+// Use a transactional outbox when a database commit must lead to message publication.

@@ -1,0 +1,93 @@
+// Package telemetry provides opt-in debug tracing without recording auth data.
+package telemetry
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
+)
+
+// Setup must run once, before serving requests. Disabled mode creates no exporter.
+func Setup(ctx context.Context) (func(context.Context) error, error) {
+	shutdown := func(context.Context) error { return nil }
+	enabled := false
+	if value := os.Getenv("DEBUG"); value != "" {
+		var err error
+		enabled, err = strconv.ParseBool(value)
+		if err != nil {
+			return nil, fmt.Errorf("DEBUG must be a boolean")
+		}
+	}
+	if !enabled {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		return shutdown, nil
+	}
+	endpoint := strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+	// Use the same precedence as the OTLP exporter: signal-specific overrides base.
+	tracesEndpoint := strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"))
+	if endpoint == "" { endpoint = "http://localhost:4318" }
+	if tracesEndpoint == "" {
+		tracesEndpoint = strings.TrimRight(endpoint, "/") + "/v1/traces"
+	}
+	u, err := url.Parse(tracesEndpoint)
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		log.Print("debug tracing disabled: invalid OTLP endpoint configuration")
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		return shutdown, nil
+	}
+	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(tracesEndpoint), otlptracehttp.WithTimeout(3*time.Second), otlptracehttp.WithRetry(otlptracehttp.RetryConfig{Enabled: false}))
+	if err != nil {
+		log.Print("debug tracing disabled: exporter initialization failed")
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		return shutdown, nil
+	}
+	service := os.Getenv("OTEL_SERVICE_NAME")
+	if service == "" {
+		service = {{ printf "%q" .Name }}
+	}
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithResource(resource.NewSchemaless(attribute.String("service.name", service))),
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(optionalExporter{exporter}, sdktrace.WithBatchTimeout(time.Second)),
+	)
+	otel.SetTracerProvider(provider)
+	return provider.Shutdown, nil
+}
+
+// Export failures discard only the current batch. Future batches still attempt
+// delivery, so a recovered collector works without restarting the application.
+type optionalExporter struct{ sdktrace.SpanExporter }
+
+func (e optionalExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
+	_ = e.SpanExporter.ExportSpans(ctx, spans)
+	return nil
+}
+
+func (e optionalExporter) Shutdown(ctx context.Context) error {
+	_ = e.SpanExporter.Shutdown(ctx)
+	return nil
+}
+
+// Start adds an internal operation to the current request trace. Names must be
+// static; never pass tokens, session IDs, SQL, Redis arguments or user input.
+func Start(ctx context.Context, name string) (context.Context, trace.Span) {
+	if !Enabled() { return ctx, noop.Span{} }
+ return otel.Tracer("modkit").Start(ctx, name)
+}
+
+
+// Enabled checks the debug gate for every operation, including propagated traces.
+func Enabled() bool { enabled, _ := strconv.ParseBool(os.Getenv("DEBUG")); return enabled }

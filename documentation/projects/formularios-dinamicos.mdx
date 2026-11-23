@@ -1,0 +1,234 @@
+---
+sidebar_position: 2
+title: Formularios dinámicos y contratos RJSF
+---
+
+# Formularios dinámicos y contratos RJSF
+
+La primera fase del flujo **Crédito Vehicular — Radicación** utiliza un contrato
+versionado que separa la estructura de datos, la presentación, el comportamiento
+y la integración con el dominio.
+
+```text
+workflow_version
+        └── workflow_phase_version
+              ├── schema
+              ├── uiSchema
+              ├── behavior
+              └── mappings
+```
+
+La fase publicada es inmutable. Un cambio en cualquiera de estas estructuras
+crea una nueva versión de fase y conserva el contrato utilizado por las
+solicitudes existentes.
+
+## Contrato de fase
+
+El BFF expone el contrato mediante:
+
+```text
+GET /api/requests/:id/form
+```
+
+La respuesta incluye la identidad de la fase, sus documentos RJSF, los datos
+actuales y la revisión de la solicitud:
+
+```json
+{
+  "id": "phase-version-id",
+  "workflowId": "workflow-id",
+  "workflowVersion": 1,
+  "phaseId": "radicacion",
+  "phaseVersion": "stage1.1",
+  "nodeId": "opportunity",
+  "displayName": "Radicación",
+  "position": 1,
+  "contractVersion": "1.0",
+  "schema": {},
+  "uiSchema": {},
+  "behavior": {},
+  "mappings": {},
+  "formData": {},
+  "revision": 1
+}
+```
+
+## `schema`
+
+`schema` define la forma y las reglas de los datos. Usa JSON Schema compatible
+con RJSF/AJV. Los campos reutilizables se identifican por su clave y se pueden
+agrupar como objetos o listas.
+
+```json
+{
+  "type": "object",
+  "title": "Radicación",
+  "properties": {
+    "tipoPersona": {
+      "type": "string",
+      "title": "Tipo de persona",
+      "oneOf": [
+        { "const": "natural", "title": "Persona natural" },
+        { "const": "juridica", "title": "Persona jurídica" }
+      ]
+    },
+    "vehiculos": {
+      "type": "array",
+      "title": "Vehículos de la solicitud",
+      "icon": "car",
+      "items": {
+        "type": "object",
+        "properties": {
+          "marca": { "type": "string", "title": "Marca" },
+          "modelo": { "type": "string", "title": "Modelo" },
+          "valor": { "type": "number", "title": "Valor del vehículo" }
+        }
+      }
+    }
+  },
+  "required": ["tipoPersona", "vehiculos"]
+}
+```
+
+Además de las palabras clave estándar, el contrato soporta `icon` como metadato
+visual propio en propiedades de schema. El frontend lo utiliza para representar
+encabezados de grupos y secciones. Los valores actuales son `car`, `user` y
+`upload`.
+
+## `uiSchema`
+
+`uiSchema` configura la presentación sin cambiar los datos. Los widgets son
+nombres del catálogo visual del frontend y `ui:options` contiene el layout de
+secciones, filas, columnas y textos.
+
+```json
+{
+  "ui:options": {
+    "sections": [
+      [
+        { "fields": ["tipoPersona"] },
+        {
+          "fields": ["documento", "perfiles", "ingresos"],
+          "columns": "1fr 1.35fr 1fr"
+        }
+      ],
+      [
+        { "fields": ["vehiculos"] },
+        {
+          "fields": ["porcentaje", "monto"],
+          "columns": "1fr 1fr",
+          "variant": "muted"
+        }
+      ]
+    ]
+  },
+  "ingresos": {
+    "ui:widget": "currency",
+    "ui:options": { "prefix": "S/" }
+  },
+  "documentos": {
+    "ui:options": {
+      "icon": "upload",
+      "rows": [
+        { "fields": ["identificacion", "sunat", "otros"], "columns": "1fr 1fr 1fr" }
+      ]
+    }
+  }
+}
+```
+
+Widgets registrados en la primera fase:
+
+| Widget | Uso |
+| --- | --- |
+| `segmented` | Selección visual entre opciones |
+| `multiselect` | Selección de varios valores |
+| `currency` | Valores monetarios |
+| `percentSlider` | Porcentaje financiado |
+| `sectionToggle` | Activación de un bloque opcional |
+| `consent` | Confirmación de consentimiento |
+| `fileCard` | Referencia visual de un documento |
+
+Los archivos no se almacenan como `data-url` dentro de `formData`. La carga
+documental se integrará posteriormente con el servicio de documentos.
+
+## `behavior`
+
+`behavior` contiene reglas dinámicas que no deben duplicarse en el frontend ni
+en el backend HTTP. La primera fase registra reglas declarativas como:
+
+```json
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "guarantor_visibility",
+      "when": { "path": "/tieneAvalista", "equals": true },
+      "effect": { "path": "/avalista", "visible": true }
+    },
+    {
+      "id": "requested_amount_read_only",
+      "effect": { "path": "/monto", "readOnly": true }
+    }
+  ]
+}
+```
+
+La ejecución de estas reglas debe ser segura, versionada y limitada al catálogo
+de efectos permitido. No se ejecuta código arbitrario enviado por el formulario.
+
+## `mappings`
+
+`mappings` relaciona los campos del formulario con atributos del dominio:
+
+```json
+{
+  "items": [
+    {
+      "formPath": "/ingresos",
+      "domainPath": "/applicant/income",
+      "direction": "both"
+    },
+    {
+      "formPath": "/vehiculos",
+      "domainPath": "/vehicles",
+      "direction": "both"
+    }
+  ]
+}
+```
+
+El frontend trabaja con `formPath`; Core valida y aplica la relación con el
+dominio. El BFF transporta el contrato y no debe convertirse en una segunda
+fuente de reglas.
+
+## Catálogo de campos
+
+El catálogo persistente de Core mantiene los tipos reutilizables en inglés:
+
+```text
+select       → opciones cerradas
+multiselect  → varias opciones
+currency     → número monetario
+number       → número
+decision     → decisión derivada
+repeat       → lista de objetos
+group        → objeto agrupado
+text         → texto
+email        → correo electrónico
+date         → fecha
+```
+
+Cada campo puede definir `key`, `label`, `type`, `required`, `options`,
+`currency`, `columns`, `icon` y campos hijos. Las claves y tipos se validan en
+Core antes de persistir o publicar una versión.
+
+## Fuentes de implementación
+
+- Contrato de referencia: `LOS_CORE/internal/workflow/domain/templates/credit-vehicle-stage1.json`.
+- Traductor genérico: `LOS_CORE/internal/workflow/domain/form_contract.go`.
+- Seeder del flujo: `LOS_CORE/internal/workflow/domain/credit_vehicle_stage1.go`.
+- Persistencia de fases: `LOS_CORE/internal/workflow/infrastructure/fields.go`.
+- Render RJSF: `LOS_FRONTEND/src/features/requests/RequestForm.tsx`.
+- Registro de widgets: `LOS_FRONTEND/src/features/form-engine/widgets.ts`.
+- Registro funcional de la primera fase: `Workplan/1.2.0/REGISTRO_FLUJO_FASE_1.md`.

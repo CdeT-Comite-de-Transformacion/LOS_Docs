@@ -1,0 +1,17 @@
+package storage
+
+import (
+ "context"
+ "io"
+ "time"
+)
+
+type Object struct { Body io.ReadCloser; Size int64; ContentType string }
+
+// Objects is the common S3/MinIO boundary. Callers close returned object bodies.
+type Objects interface {
+ Put(context.Context,string,string,io.Reader,int64,string)error
+ Get(context.Context,string,string)(Object,error)
+ Delete(context.Context,string,string)error
+ PresignGet(context.Context,string,string,time.Duration)(string,error)
+}

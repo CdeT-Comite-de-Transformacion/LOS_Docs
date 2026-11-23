@@ -1,0 +1,64 @@
+package messaging
+
+// TODO(doc): document the project-specific resource names, permissions, timeouts,
+// retry/idempotency policy and connection lifecycle when wiring this adapter.
+// Use configuration variable names in examples, never credentials or payloads.
+
+import (
+ "context"
+ "encoding/json"
+ "fmt"
+ "os"
+ "time"
+ "github.com/aws/aws-sdk-go-v2/aws"
+ "github.com/aws/aws-sdk-go-v2/config"
+ "github.com/aws/aws-sdk-go-v2/service/sqs"
+)
+
+type SQS struct { client *sqs.Client }
+var _ Queue=(*SQS)(nil)
+
+func OpenSQS(ctx context.Context)(*SQS,error){
+ cfg,err:=config.LoadDefaultConfig(ctx);if err!=nil{return nil,err}
+ if cfg.Region==""{return nil,fmt.Errorf("AWS_REGION is required")}
+ client:=sqs.NewFromConfig(cfg,func(options *sqs.Options){
+  if endpoint:=os.Getenv("SQS_ENDPOINT");endpoint!=""{options.BaseEndpoint=aws.String(endpoint)}
+ })
+ return &SQS{client:client},nil
+}
+func(s *SQS) Send(ctx context.Context,queue string,message Message)error{
+ if queue=="" || message.ID==""{return fmt.Errorf("queue URL and message ID are required")}
+ body,err:=json.Marshal(message);if err!=nil{return err}
+ input:=&sqs.SendMessageInput{QueueUrl:aws.String(queue),MessageBody:aws.String(string(body))}
+ if message.GroupID!=""{input.MessageGroupId=aws.String(message.GroupID)}
+ if message.DeduplicationID!=""{input.MessageDeduplicationId=aws.String(message.DeduplicationID)}
+ _,err=s.client.SendMessage(ctx,input)
+ return err
+}
+func(s *SQS) Receive(ctx context.Context,queue string,limit int,wait time.Duration)([]Delivery,error){
+ if queue=="" || limit<1 || limit>10 || wait<0 || wait>20*time.Second{return nil,fmt.Errorf("queue required; limit 1..10, wait 0..20s")}
+ output,err:=s.client.ReceiveMessage(ctx,&sqs.ReceiveMessageInput{
+  QueueUrl:aws.String(queue),MaxNumberOfMessages:int32(limit),WaitTimeSeconds:int32(wait/time.Second),
+ })
+ if err!=nil{return nil,err}
+ deliveries:=make([]Delivery,0,len(output.Messages))
+ for _,message:=range output.Messages{
+  var envelope Message
+  if err:=json.Unmarshal([]byte(aws.ToString(message.Body)),&envelope);err!=nil{return deliveries,fmt.Errorf("decode message %s: %w",aws.ToString(message.MessageId),err)}
+  if envelope.ID==""{return deliveries,fmt.Errorf("message %s has no application ID; use SNS raw delivery for SNS subscriptions",aws.ToString(message.MessageId))}
+  deliveries=append(deliveries,Delivery{Message:envelope,ReceiptHandle:aws.ToString(message.ReceiptHandle)})
+ }
+ return deliveries,nil
+}
+func(s *SQS) Ack(ctx context.Context,queue,receipt string)error{
+ if queue=="" || receipt==""{return fmt.Errorf("queue URL and receipt handle are required")}
+ _,err:=s.client.DeleteMessage(ctx,&sqs.DeleteMessageInput{QueueUrl:aws.String(queue),ReceiptHandle:aws.String(receipt)})
+ return err
+}
+func(s *SQS) ExtendVisibility(ctx context.Context,queue,receipt string,duration time.Duration)error{
+ if queue=="" || receipt=="" || duration<0 || duration>12*time.Hour{return fmt.Errorf("queue/receipt required; visibility must be 0..12h")}
+ _,err:=s.client.ChangeMessageVisibility(ctx,&sqs.ChangeMessageVisibilityInput{
+  QueueUrl:aws.String(queue),ReceiptHandle:aws.String(receipt),VisibilityTimeout:int32(duration/time.Second),
+ })
+ return err
+}

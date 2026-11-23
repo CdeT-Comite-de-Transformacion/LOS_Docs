@@ -1,0 +1,44 @@
+# {{ .ModuleDir }} module
+
+> Complete the pending sections when implementing the domain. This template
+> lists design questions, not guarantees that are already implemented.
+> Write all documentation in English.
+
+## Responsibility and boundaries
+
+TODO(doc): describe the business capability, key terms and responsibilities
+owned by other modules. Identify the responsible team.
+
+## Entities and rules
+
+TODO(doc): list entities, invariants, states and transitions. Reference domain
+files and the tests that demonstrate each important rule.
+
+## Use cases and contracts
+
+TODO(doc): for each operation, specify actors/permissions, inputs, outputs,
+errors, cancellation behavior and transaction boundaries.
+
+## Persistence and events
+
+TODO(doc): document tables/migrations, tenant/owner isolation, concurrency,
+idempotency, auditing and event publication. Explain write/publication ordering
+and what happens if the second step fails. Generated CRUD does not automatically
+provide authorization, tenant filters or revision checks.
+
+## Integrations and configuration
+
+TODO(doc): list the adapters actually used, configuration variables, timeouts,
+retries, connection ownership and local development dependencies.
+Never include secrets or personal data. Tracing uses static names without payloads.
+
+## Tests
+
+Keep `*_test.go` files next to the code. Run `go test ./...` from the project root.
+TODO(doc): describe additional scenarios and how to enable integration tests,
+separating them from unit tests that require no external services.
+
+## Pending decisions
+
+TODO(doc): link team decisions and record accepted trade-offs.
+Remove these markers when the actual contracts have been documented.

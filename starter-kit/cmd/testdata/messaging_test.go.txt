@@ -1,0 +1,71 @@
+package messaging
+
+import (
+ "context"
+ "encoding/json"
+ "fmt"
+ "net/http"
+ "net/http/httptest"
+ "strings"
+ "sync"
+ "testing"
+ "time"
+)
+func TestSNSAndSQSAdapters(t *testing.T){
+ t.Setenv("AWS_REGION","us-east-1")
+ t.Setenv("AWS_ACCESS_KEY_ID","test")
+ t.Setenv("AWS_SECRET_ACCESS_KEY","test")
+ t.Setenv("AWS_EC2_METADATA_DISABLED","true")
+ var mu sync.Mutex
+ calls:=map[string]int{}
+ var published Message
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  mu.Lock();defer mu.Unlock()
+  if target:=r.Header.Get("X-Amz-Target");target!=""{
+   action:=strings.TrimPrefix(target,"AmazonSQS.")
+   calls[action]++
+   var input map[string]any
+   if err:=json.NewDecoder(r.Body).Decode(&input);err!=nil{t.Error(err)}
+   w.Header().Set("Content-Type","application/x-amz-json-1.0")
+   switch action{
+   case "SendMessage":
+    if err:=json.Unmarshal([]byte(input["MessageBody"].(string)),&published);err!=nil{t.Error(err)}
+    fmt.Fprint(w,`{"MessageId":"transport-1"}`)
+   case "ReceiveMessage":
+    body,_:=json.Marshal(Message{ID:"event-1",Body:[]byte("payload"),Attributes:map[string]string{"type":"submitted"}})
+    _=json.NewEncoder(w).Encode(map[string]any{"Messages":[]map[string]any{{"MessageId":"transport-1","ReceiptHandle":"receipt-1","Body":string(body)}}})
+   case "DeleteMessage","ChangeMessageVisibility":
+    if input["ReceiptHandle"]!="receipt-1"{t.Error("receipt handle not forwarded")}
+    fmt.Fprint(w,"{}")
+   default:t.Errorf("unexpected SQS action %s",action)
+   }
+   return
+  }
+  if err:=r.ParseForm();err!=nil{t.Error(err)}
+  if r.Form.Get("Action")!="Publish"{t.Error("unexpected SNS request")}
+  calls["Publish"]++
+  if err:=json.Unmarshal([]byte(r.Form.Get("Message")),&published);err!=nil{t.Error(err)}
+  w.Header().Set("Content-Type","text/xml")
+  fmt.Fprint(w,`<PublishResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/"><PublishResult><MessageId>transport-1</MessageId></PublishResult><ResponseMetadata><RequestId>test</RequestId></ResponseMetadata></PublishResponse>`)
+ }))
+ defer server.Close()
+ t.Setenv("SNS_ENDPOINT",server.URL);t.Setenv("SQS_ENDPOINT",server.URL)
+ ctx:=context.Background()
+ topic,err:=OpenSNS(ctx);if err!=nil{t.Fatal(err)}
+ queue,err:=OpenSQS(ctx);if err!=nil{t.Fatal(err)}
+ message:=Message{ID:"event-1",Body:[]byte("payload"),Attributes:map[string]string{"type":"submitted"}}
+ if err:=topic.Publish(ctx,"arn:aws:sns:us-east-1:123456789012:test",message);err!=nil{t.Fatal(err)}
+ queueURL:=server.URL+"/123456789012/test"
+ if err:=queue.Send(ctx,queueURL,message);err!=nil{t.Fatal(err)}
+ deliveries,err:=queue.Receive(ctx,queueURL,1,time.Second);if err!=nil{t.Fatal(err)}
+ if len(deliveries)!=1 || deliveries[0].Message.ID!="event-1" || string(deliveries[0].Message.Body)!="payload"{t.Fatalf("invalid delivery: %+v",deliveries)}
+ if err:=queue.ExtendVisibility(ctx,queueURL,deliveries[0].ReceiptHandle,time.Minute);err!=nil{t.Fatal(err)}
+ if err:=queue.Ack(ctx,queueURL,deliveries[0].ReceiptHandle);err!=nil{t.Fatal(err)}
+ if _,err:=queue.Receive(ctx,queueURL,11,time.Second);err==nil{t.Fatal("invalid batch accepted")}
+ if err:=queue.ExtendVisibility(ctx,queueURL,"receipt",13*time.Hour);err==nil{t.Fatal("invalid visibility accepted")}
+ mu.Lock();defer mu.Unlock()
+ for _,action:=range []string{"Publish","SendMessage","ReceiveMessage","ChangeMessageVisibility","DeleteMessage"}{
+  if calls[action]!=1{t.Fatalf("%s calls: %d",action,calls[action])}
+ }
+ if published.ID!=message.ID || string(published.Body)!="payload"{t.Fatal("envelope lost")}
+}
